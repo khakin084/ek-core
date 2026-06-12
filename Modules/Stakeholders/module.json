@@ -1,0 +1,11 @@
+{
+    "name": "Stakeholders",
+    "alias": "stakeholders",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Stakeholders\\Providers\\StakeholdersServiceProvider"
+    ],
+    "files": []
+}

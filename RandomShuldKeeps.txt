@@ -1,0 +1,20 @@
+ $result = dtResponse(
+            baseQuery: $base,
+            dt: $dt,
+            searchable: ['name', 'descriptions', 'code'],
+            sortable: ['id', 'name', 'code'],
+            filters: function ($q, $dt) {
+                if (!empty($dt['user_filter'])) {
+                    $q->where('created_by', $dt['user_filter']); // adjust field name
+                }
+                if (!empty($dt['created_from'])) {
+                    $q->whereDate('created_at', '>=', $dt['created_from']);
+                }
+                if (!empty($dt['created_to'])) {
+                    $q->whereDate('created_at', '<=', $dt['created_to']);
+                }
+            },
+            select: ['id', 'name', 'code', 'descriptions', 'created_at'],
+            defaultSortCol: 'id',
+            defaultSortDir: 'desc'
+        );

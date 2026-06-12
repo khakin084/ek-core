@@ -1,0 +1,107 @@
+
+.select2-selection {
+height: 30px !important;
+font-size: 15px;
+border-radius: .25rem !important;
+border: 1px solid #ced4da !important;
+padding-left: 2px;
+}
+
+.select2-selection--multiple {
+overflow: hidden !important;
+height: auto !important;
+width: 100% !important;
+border-radius: .25rem !important;
+border: 1px solid #ced4da !important;
+}
+
+.select2-selection__choice {
+height: 20px;
+line-height: 13px;
+padding: 1px !important;
+background-color: #CAF1FF !important;
+color: #333 !important;
+border: 1px solid #80bdff !important;
+border-radius: 3px !important;
+}
+
+.select2-selection__choice__remove {
+float: right;
+margin-right: 0;
+margin-left: 3px;
+font-size: 19px;
+}
+
+.select2-search--inline .select2-search__field {
+line-height: 20px;
+color: #333;
+width: 100% !important;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple,
+.select2-container--default.select2-container--focus .select2-selection--single {
+color: #495057;
+background-color: #fff;
+border-radius: .25rem;
+border-color: #80bdff !important;
+outline: 0;
+box-shadow: 0 0 0 .2rem rgba(0, 123, 255, .25) !important
+}
+
+span.select2-selection--multiple[aria-expanded=true],
+span.select2-selection--single[aria-expanded=true] {
+color: #495057;
+background-color: #fff;
+border-radius: .25rem;
+border-color: #80bdff !important;
+outline: 0;
+box-shadow: 0 0 0 .2rem rgba(0, 123, 255, .25) !important
+}
+
+.select2-results__options li {
+display: block;
+}
+
+.select2-selection__rendered {
+transform: translateY(2px);
+}
+
+.select2-selection__arrow {
+display: none;
+}
+
+.select2-results__option--highlighted {
+background-color: #CAF1FF !important;
+color: #333 !important;
+}
+
+.select2-dropdown {
+border-radius: 0 !important;
+box-shadow: 0px 3px 6px 0 rgba(0, 0, 0, 0.15) !important;
+border: none !important;
+margin-top: 4px !important;
+}
+
+.select2-results__option {
+font-size: 15px;
+line-height: 13px !important;
+vertical-align: middle !important;
+padding-left: 8px !important;
+}
+
+.select2-results__option[aria-selected="true"] {
+background-color: #eee !important;
+}
+
+.select2-search__field {
+font-family: 'Open Sans', sans-serif;
+color: #333;
+font-size: 13px;
+padding-left: 8px !important;
+border-color: #80bdff !important;
+}
+
+.select2-selection__placeholder {
+color: #c4c4c4 !important;
+opacity: 0.3;
+}
