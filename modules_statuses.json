@@ -1,5 +1,6 @@
 {
     "Catalog": true,
     "Catalogs": true,
-    "Stakeholders": true
+    "Stakeholders": true,
+    "UserMgt": true
 }

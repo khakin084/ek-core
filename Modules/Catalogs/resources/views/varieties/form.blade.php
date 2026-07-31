@@ -100,7 +100,8 @@
 											<option value="">&nbsp;</option>
 											@foreach ($vpsOptions as $index => $option)
 												<option value="{{ $option['value'] }}" @if ($edit && in_array($option['value'], $itemVariety['variety_particulars'])) selected @endif>
-													{{ $option['label'] }}
+													{{ $option['label
+													'] }}
 												</option>
 											@endforeach
 										</select>

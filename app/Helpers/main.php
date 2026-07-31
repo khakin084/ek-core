@@ -49,7 +49,6 @@ if (!function_exists('decodeUrlx')) {
     }
 }
 
-
 if (!function_exists('infoLogger')) {
     function infoLogger(string|null $path = null, string|null $message = null): void
     {
@@ -99,48 +98,6 @@ function getLoggedMethod(array $trace)
     return $trace[1]['function'] ?? null;
 }
 
-
-if (!function_exists('authUserId')) {
-    function authUserId()
-    {
-        if (request()->has('userId')) {
-            return json_decode(request()->input('userId'), true)['id'];
-        }
-        return auth()->id();
-    }
-}
-
-if (!function_exists('authUser')) {
-    function authUser(): \App\Models\User|\Illuminate\Contracts\Auth\Authenticatable|null
-    {
-        $userSession = request()->input('userId');
-        if (!empty($userSession)) {
-            return new \App\Models\User(json_decode($userSession, true));
-        }
-        return auth()->user();
-    }
-}
-
-if (!function_exists('authUserPermissions')) {
-    function authUserPermissions(): array
-    {
-        if (request()->has('permissions')) {
-            $permissions = [];
-            $scopes = request()->input('permissions');
-            if (count($scopes) > 0) {
-                foreach ($scopes as $permission) {
-                    if (str_contains($permission, ':') && substr($permission, 0, strpos($permission, ':')) === 'core') {
-                        $permissions[] = substr($permission, strpos($permission, ':') + 1);
-                    }
-                }
-            }
-
-            return $permissions;
-        }
-        return [];
-    }
-}
-
 if (!function_exists('id')) {
     /**
      * @throws \Psr\Container\ContainerExceptionInterface
@@ -149,35 +106,6 @@ if (!function_exists('id')) {
     function id()
     {
         return authUser()->id;
-    }
-}
-
-if (!function_exists('userObject')) {
-    function userObject(): false|string|null
-    {
-        $user = request()->input('userId');
-        if (!empty($user)) {
-            $userData = json_decode($user, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return json_encode([
-                    'id' => $userData['id'] ?? null,
-                    'ward_id' => $userData['ward_id'] ?? null,
-                    'district_id' => $userData['district_id'] ?? null,
-                    'name' => $userData['name'] ?? null,
-                    'email' => $userData['email'] ?? null,
-                    'full_name' => $userData['full_name'] ?? null,
-                    'username' => $userData['username'] ?? null,
-                    'phone' => $userData['phone'] ?? null,
-                    'user_type' => $userData['user_type'] ?? null,
-                    'userable_type' => $userData['userable_type'] ?? null,
-                    'userable_id' => $userData['userable_id'] ?? null,
-                    'gender' => $userData['gender'] ?? null,
-                    'is_active' => $userData['is_active'] ?? null,
-                    'change_password' => $userData['change_password'] ?? null,
-                ]);
-            }
-        }
-        return null;
     }
 }
 
@@ -210,21 +138,25 @@ if (!function_exists('getModule')) {
 
 if (!function_exists('dtParams')) {
     /**
-     * Universal DataTables params extractor (BFF + downstream).
+     * Pulls DataTables values out of a request into a clean array.
      *
-     * Supports BOTH:
-     *  - DataTables native search[value]
-     *  - Custom flattened search
+     * Reads the standard DataTables fields (draw, start, length, search)
+     * and works whether the search comes in as search[value] (DataTables
+     * default) or as a plain "search" string (our custom setup).
+     *
+     * You can also ask for extra filter fields via $extraKeys, and give
+     * them fallback values via $defaults.
      *
      * @param Request $request
-     * @param array $extraKeys   Additional filter keys to include (e.g. ['user_filter','created_from'])
-     * @param array $defaults    Defaults for extra keys
-     * @param array $options     Options:
-     *   - 'min_length' => int (default 1)
-     *   - 'max_length' => int|null (default null)
-     *   - 'include_order_columns' => bool (default true)
-     *   - 'drop_empty' => bool (default true)
-     * @return array
+     * @param array $extraKeys  Extra request fields to grab, e.g. ['user_filter', 'created_from']
+     * @param array $defaults   Fallback value per extra key if it's missing, e.g. ['user_filter' => 'all']
+     * @param array $options    Optional tweaks:
+     *   - min_length (int, default 1)         Smallest allowed page size
+     *   - max_length (int|null, default null) Largest allowed page size (null = no cap)
+     *   - include_order_columns (bool, true)  Also return 'order' and 'columns'
+     *   - drop_empty (bool, true)             Skip extra keys that are null or ''
+     *
+     * @return array  ['draw', 'start', 'length', 'search', ...] plus any extra keys
      */
     function dtParams(
         Request $request,
@@ -240,6 +172,12 @@ if (!function_exists('dtParams')) {
 
         $rawSearch = $request->input('search');
 
+        // Two callers, two shapes:
+        //   - array  -> came straight from a DataTables AJAX request, where
+        //               search lives under search[value].
+        //   - string -> came from our own code/BFF that already flattened it
+        //               into a plain "search" field.
+        // Anything else (null, missing) is treated as no search.
         if (is_array($rawSearch)) {
             $search = $rawSearch['value'] ?? '';
         } elseif (is_string($rawSearch)) {
@@ -248,6 +186,9 @@ if (!function_exists('dtParams')) {
             $search = '';
         }
 
+        // Clamp page size into a sane range so a client can't request a
+        // huge (or zero/negative) page. Floor at min_length, and cap at
+        // max_length only if one was set.
         $length = (int) $request->input('length', 10);
         $length = max($minLength, $length);
         if ($maxLength !== null) {
@@ -348,7 +289,7 @@ if (!function_exists('applyDtOrdering')) {
         string $defaultDir = 'desc'
     ) {
 
-        $orders  = $dtParams['order'] ?? [];
+        $orders = $dtParams['order'] ?? [];
         $columns = $dtParams['columns'] ?? [];
 
         if (!empty($orders) && is_array($orders)) {
@@ -415,7 +356,7 @@ if (!function_exists('dtResponse')) {
         }
 
         // Global search
-        $search = trim((string)($dt['search'] ?? ''));
+        $search = trim((string) ($dt['search'] ?? ''));
         if ($search !== '' && !empty($searchable)) {
             $driver = $q->getConnection()->getDriverName();
             $like = $driver === 'pgsql' ? 'ILIKE' : 'LIKE';
@@ -435,14 +376,15 @@ if (!function_exists('dtResponse')) {
         $recordsFiltered = (clone $q)->count();
 
         // Ordering (safe)
-        $orders  = $dt['order'] ?? [];
+        $orders = $dt['order'] ?? [];
         $columns = $dt['columns'] ?? [];
 
         $appliedOrder = false;
 
         if (!empty($orders) && is_array($orders) && !empty($sortable)) {
             foreach ($orders as $order) {
-                if (!isset($order['column'], $order['dir'])) continue;
+                if (!isset($order['column'], $order['dir']))
+                    continue;
 
                 $colIndex = (int) $order['column'];
                 $dir = strtolower($order['dir']) === 'desc' ? 'desc' : 'asc';
@@ -460,8 +402,8 @@ if (!function_exists('dtResponse')) {
         }
 
         // Paging
-        $start  = (int)($dt['start'] ?? 0);
-        $length = (int)($dt['length'] ?? 10);
+        $start = (int) ($dt['start'] ?? 0);
+        $length = (int) ($dt['length'] ?? 10);
 
         $q->skip(max(0, $start))->take(max(1, $length));
 
@@ -473,10 +415,28 @@ if (!function_exists('dtResponse')) {
         }
 
         return [
-            'draw' => (int)($dt['draw'] ?? 1),
+            'draw' => (int) ($dt['draw'] ?? 1),
             'recordsTotal' => $recordsTotal,
             'recordsFiltered' => $recordsFiltered,
             'data' => $data,
         ];
+    }
+}
+
+/**
+ * Redact common sensitive fields from payload logs.
+ */
+if (!function_exists('redact')) {
+    function redact(array $payload): array
+    {
+        $sensitive = ['password', 'secret', 'token', 'access_token', 'refresh_token'];
+
+        foreach ($sensitive as $k) {
+            if (array_key_exists($k, $payload)) {
+                $payload[$k] = '***';
+            }
+        }
+
+        return $payload;
     }
 }

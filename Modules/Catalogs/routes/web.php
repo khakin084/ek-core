@@ -8,7 +8,7 @@ Route::prefix('catalogs')->middleware(['ek-web'])->group(function () {
     Route::get('/', [CatalogsController::class, 'index'])->name('catalogs');
     Route::post('list', [CatalogsController::class, 'itemsDataTable'])->name('catalogs-list');
     Route::post('store', [CatalogsController::class, 'storeItem'])->name('item-store');
-    Route::post('rearrange-variations', [CatalogsController::class, 'rearrangeVariations'])->name('rearrange-variations');
+    Route::post('rearrange-variations', [CatalogsController::class, 'rearrangeVariations'])->name('rearrange-variations')->middleware('audit.bff');
     Route::get('get-uom/{id}', [CatalogsController::class, 'getUom'])->name('get-uom');
     Route::delete('delete/{id}', [CatalogsController::class, 'deleteItem'])->name('item-delete');
     Route::get('create/{id?}', [CatalogsController::class, 'createItem'])->name('item-create');
@@ -59,22 +59,22 @@ Route::prefix('catalogs')->middleware(['ek-web'])->group(function () {
 });
 
 
-use Modules\ItemMaster\Http\Controllers\ItemMasterController;
-use Modules\ItemMaster\Http\Controllers\UnitsController;
+// use Modules\ItemMaster\Http\Controllers\ItemMasterController;
+// use Modules\ItemMaster\Http\Controllers\UnitsController;
 
-Route::prefix('item-master')->middleware('ek-api')->group(function () {
+// Route::prefix('item-master')->middleware('ek-api')->group(function () {
 
 
-    // Composite Item
-    Route::prefix('composite-item')->group(function () {
-        Route::get('create', [ItemMasterController::class, 'createCompositeItem'])->name('composite-item-create');
-        Route::post('store', [ItemMasterController::class, 'storeCompositeItem'])->name('composite-item-store');
-    });
+//     // Composite Item
+//     Route::prefix('composite-item')->group(function () {
+//         Route::get('create', [ItemMasterController::class, 'createCompositeItem'])->name('composite-item-create');
+//         Route::post('store', [ItemMasterController::class, 'storeCompositeItem'])->name('composite-item-store');
+//     });
 
-    // Other Item Master routes
-    Route::get('{num1}/{num2}/{alpha}/unit-and-last-price', [ItemMasterController::class, 'retrieveUnitNLastPrice'])
-        ->where('alpha', '[A-Za-z]+'); // (:alpha) only alphabetic
+//     // Other Item Master routes
+//     Route::get('{num1}/{num2}/{alpha}/unit-and-last-price', [ItemMasterController::class, 'retrieveUnitNLastPrice'])
+//         ->where('alpha', '[A-Za-z]+'); // (:alpha) only alphabetic
 
-    Route::get('index', [ItemMasterController::class, 'index'])->name('item-master-index');
-    Route::post('list', [ItemMasterController::class, 'itemsDataTable']);
-});
+//     Route::get('index', [ItemMasterController::class, 'index'])->name('item-master-index');
+//     Route::post('list', [ItemMasterController::class, 'itemsDataTable']);
+// });

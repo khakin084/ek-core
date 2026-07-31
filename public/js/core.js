@@ -45,14 +45,14 @@ var dates = {
         return d.constructor === Date
             ? d
             : d.constructor === Array
-            ? new Date(d[0], d[1], d[2])
-            : d.constructor === Number
-            ? new Date(d)
-            : d.constructor === String
-            ? new Date(d)
-            : typeof d === "object"
-            ? new Date(d.year, d.month, d.date)
-            : NaN;
+              ? new Date(d[0], d[1], d[2])
+              : d.constructor === Number
+                ? new Date(d)
+                : d.constructor === String
+                  ? new Date(d)
+                  : typeof d === "object"
+                    ? new Date(d.year, d.month, d.date)
+                    : NaN;
     },
     compare: function (a, b) {
         // Compare two dates (could be of any type supported by the convert
@@ -281,7 +281,7 @@ function select2Create(
     button_type,
     can_clear,
     root_div,
-    set_width
+    set_width,
 ) {
     let div = typeof root_div !== "undefined" ? root_div : null;
     let width = typeof set_width !== "undefined" ? set_width : "100%";
@@ -298,7 +298,7 @@ function select2Create(
                 var $option = $(
                     '.contributions-multiple-select option[value="' +
                         tag.id +
-                        '"]'
+                        '"]',
                 );
                 if ($option.attr("locked")) {
                     $(container).addClass("locked-tag");
@@ -319,7 +319,7 @@ function select2Create(
                             '<i class="fa fa-plus"></i> Create ' +
                             title +
                             "</button>" +
-                            "</div>"
+                            "</div>",
                     )
                     .on("click", function (b) {
                         b.preventDefault();
@@ -352,7 +352,7 @@ function select2custom(selector, title, can_clear, set_width) {
                 var $option = $(
                     '.contributions-multiple-select option[value="' +
                         tag.id +
-                        '"]'
+                        '"]',
                 );
                 if ($option.attr("locked")) {
                     $(container).addClass("locked-tag");
@@ -366,7 +366,7 @@ function select2custom(selector, title, can_clear, set_width) {
                 $(this)
                     .next(".select2-container")
                     .find(
-                        "li.select2-search--inline input.select2-search__field"
+                        "li.select2-search--inline input.select2-search__field",
                     )
                     .attr("placeholder", "Select Another " + title);
             }
@@ -392,6 +392,32 @@ function divDismissible() {
     }, 5000);
 }
 
+function initTabPersistence($nav, storageKey) {
+    if (!$nav || !$nav.length) return;
+
+    $nav.off("show.bs.tab.persist").on(
+        "show.bs.tab.persist",
+        'a[data-toggle="pill"]',
+        function (e) {
+            try {
+                localStorage.setItem(storageKey, $(e.target).attr("href"));
+            } catch (err) {
+                /* storage disabled or full — ignore */
+            }
+        },
+    );
+
+    let saved = null;
+    try {
+        saved = localStorage.getItem(storageKey);
+    } catch (err) {}
+
+    if (saved) {
+        const $tab = $nav.find(`a[href="${saved}"]`);
+        if ($tab.length) $tab.tab("show");
+    }
+}
+
 function calculateRowAmount(form, amount_decimal_places) {
     var decimal_places =
         typeof amount_decimal_places !== "undefined"
@@ -413,7 +439,7 @@ function calculateRowAmount(form, amount_decimal_places) {
             var amount = rate * quantity;
             // form.find('input[name="amount"]').val(amount.toFixed(decimal_places)).trigger("change");
             form.find('input[name="amount"]').val(amount).trigger("change");
-        }
+        },
     );
 }
 
@@ -583,7 +609,7 @@ function sendForApproval(object_type, object_id) {
                         "#approval_btn_container_" +
                             object_type +
                             "_" +
-                            object_id
+                            object_id,
                     ).html(res.button_view);
                     toastResponse(res);
                 },
@@ -656,7 +682,7 @@ function calculateComponentRowAmount(row, amount_decimal_places) {
             row.find('input[name="amounts[]"]')
                 .val(amount.toFixed(decimal_places))
                 .trigger("change");
-        }
+        },
     );
 }
 
@@ -734,7 +760,7 @@ function getAttachments(container) {
                         '  <div class="spinner-border" role="status">\n' +
                         '    <span class="sr-only">Loading...</span>\n' +
                         "  </div>\n" +
-                        "</div>"
+                        "</div>",
                 );
         },
         data: {
@@ -817,12 +843,12 @@ function getAccountingVoucherTableChildTable(table, tbody) {
                         "shown.bs.tab",
                         function () {
                             getAttachments(
-                                $("#attachments_div_vouchers_" + row_object_id)
+                                $("#attachments_div_vouchers_" + row_object_id),
                             );
                             uploadAttachments(
-                                $("#attachments_div_vouchers_" + row_object_id)
+                                $("#attachments_div_vouchers_" + row_object_id),
                             );
-                        }
+                        },
                     );
                 },
             });
@@ -837,7 +863,7 @@ function validateTypedQuantity(container, price_type) {
             'select[name="item_id"], input[name="quantity"]',
             function (e) {
                 var qty_before_input = container.find(
-                    'input[name="qty_before"]'
+                    'input[name="qty_before"]',
                 );
                 var quantity_input = container.find('input[name="quantity"]');
                 if (e.handled !== true) {
@@ -846,13 +872,13 @@ function validateTypedQuantity(container, price_type) {
                     if (available_qty < typed_qty) {
                         toast(
                             "error",
-                            "Only " + available_qty + " is available"
+                            "Only " + available_qty + " is available",
                         );
                         quantity_input.val(available_qty);
                     }
                     e.handled = true;
                 }
-            }
+            },
         );
     }
 }
@@ -938,7 +964,7 @@ function uploadAttachments(container) {
                                 '  <div class="spinner-border" role="status">\n' +
                                 '    <span class="sr-only">Loading...</span>\n' +
                                 "  </div>\n" +
-                                "</div>"
+                                "</div>",
                         );
                 },
                 success: function (response) {
@@ -950,7 +976,7 @@ function uploadAttachments(container) {
                             });
                     }, 5000);
                     var attachment_container = container.find(
-                        ".attachment_container"
+                        ".attachment_container",
                     );
                     container.find("form")[0].reset();
                     attachment_container.html(response);
@@ -1049,16 +1075,16 @@ function drawPsDatatable(table) {
                                 "#attachments_div_" +
                                     object_type +
                                     "_" +
-                                    object_id
-                            )
+                                    object_id,
+                            ),
                         );
                         uploadAttachments(
                             $(
                                 "#attachments_div_" +
                                     object_type +
                                     "_" +
-                                    object_id
-                            )
+                                    object_id,
+                            ),
                         );
                         $("div.slider", row.child()).slideDown();
                         stopSpinner();
@@ -1097,7 +1123,7 @@ function predecessorDetails(row) {
             success: function (response) {
                 row.find('input[name="rate"]').val(response.effective_rate);
                 row.find('select[name="tax_account"]').val(
-                    response.tax_account
+                    response.tax_account,
                 );
             },
         });
@@ -1229,13 +1255,13 @@ function accountGroupNAccountFormControl() {
                                 swalWithBootstrapButtons.fire(
                                     "Cancelled",
                                     "Your account is safe :)",
-                                    "error"
+                                    "error",
                                 );
                             }
                         },
                         success: function (res) {
                             window.location.replace(
-                                base_url + "/accounts/index"
+                                base_url + "/accounts/index",
                             );
                             toastResponse(res);
                         },
@@ -1273,13 +1299,13 @@ function accountGroupNAccountFormControl() {
                                 swalWithBootstrapButtons.fire(
                                     "Cancelled",
                                     "Your account is safe :)",
-                                    "error"
+                                    "error",
                                 );
                             }
                         },
                         success: function (data) {
                             window.location.replace(
-                                base_url + "/accounts/index"
+                                base_url + "/accounts/index",
                             );
                             Toast.fire({
                                 icon: data.flag == 1 ? "success" : "info",
@@ -1353,7 +1379,7 @@ $("#reports-tab").on("shown.bs.tab", function () {
                     function (data) {
                         report_container.html(data.table_view);
                     },
-                    "json"
+                    "json",
                 );
             } else {
                 toast("warning", "Please fill all the neccesary details!");
@@ -1476,7 +1502,7 @@ $("#gl_container").each(function () {
                         stopSpinner();
                     },
                 });
-            }
+            },
         );
 
         $("#print_ledger").click(function () {
@@ -1519,14 +1545,14 @@ $("#approvals_container").each(function () {
         $('a[data-toggle="pill"]').on("show.bs.tab", function (e) {
             localStorage.setItem(
                 "approvalsActiveTab",
-                $(e.target).attr("href")
+                $(e.target).attr("href"),
             );
         });
 
         let approvalsActiveTab = localStorage.getItem("approvalsActiveTab");
         if (approvalsActiveTab) {
             $('#approvals-nav-pills a[href="' + approvalsActiveTab + '"]').tab(
-                "show"
+                "show",
             );
         }
 
@@ -1656,7 +1682,7 @@ $("#hrs_staff_profile").each(function () {
                                         let parent_module = tbody.find(
                                             "#module_" +
                                                 $(this).attr("parent_id") +
-                                                "_READ"
+                                                "_READ",
                                         );
 
                                         parent_module.prop("checked", true);
@@ -1681,22 +1707,22 @@ $("#hrs_staff_profile").each(function () {
                                                 let child_module = $(this);
                                                 if (
                                                     child_module.attr(
-                                                        "column"
+                                                        "column",
                                                     ) != "NONE"
                                                 ) {
                                                     child_module.prop(
                                                         "checked",
-                                                        false
+                                                        false,
                                                     );
                                                 } else {
                                                     if (
                                                         !child_module.is(
-                                                            ":disabled"
+                                                            ":disabled",
                                                         )
                                                     ) {
                                                         child_module.prop(
                                                             "checked",
-                                                            true
+                                                            true,
                                                         );
                                                     }
                                                 }
@@ -1704,7 +1730,7 @@ $("#hrs_staff_profile").each(function () {
                                     }
 
                                     let form = $(
-                                        "#access_control_container"
+                                        "#access_control_container",
                                     ).find("form");
                                     let data = form
                                         .find(":input[value!='']")
@@ -1714,7 +1740,7 @@ $("#hrs_staff_profile").each(function () {
                                             base_url +
                                             "/user-permissions/store/" +
                                             $("#hrs_staff_profile").attr(
-                                                "user_id"
+                                                "user_id",
                                             ),
                                         type: "POST",
                                         data: data,
@@ -1729,7 +1755,7 @@ $("#hrs_staff_profile").each(function () {
                                         error: function (
                                             xhr,
                                             textStatus,
-                                            error
+                                            error,
                                         ) {
                                             onAjaxError(xhr, textStatus, error);
                                         },
@@ -1737,7 +1763,7 @@ $("#hrs_staff_profile").each(function () {
                                             stopSpinner();
                                         },
                                     });
-                                }
+                                },
                             );
                         });
                     stopSpinner();
@@ -1779,7 +1805,7 @@ $("#hrs_staff_profile").each(function () {
         $("#pills-salary-adjustments-tab").on("shown.bs.tab", function () {
             if (!$.fn.DataTable.isDataTable("#staff_adjustments_table")) {
                 let adjustmentDataTable = $(
-                    "#staff_adjustments_table"
+                    "#staff_adjustments_table",
                 ).dataTable({
                     colReorder: true,
                     processing: true,
@@ -1851,7 +1877,7 @@ $("#hrs_reg_container").each(function () {
         var hrsregActiveTab = localStorage.getItem("hrsregActiveTab");
         if (hrsregActiveTab) {
             $('#hrs-reg-nav-pills a[href="' + hrsregActiveTab + '"]').tab(
-                "show"
+                "show",
             );
         }
 
@@ -1960,7 +1986,7 @@ $("#hrs-contract-form-two").each(function () {
         select2custom(
             $(".contributions-multiple-select"),
             "Contribution",
-            false
+            false,
         );
         select2custom($(".deductions-multiple-select"), "Deduction", false);
     });
@@ -2011,7 +2037,7 @@ $("#hrs_prl_container").each(function () {
         var hrsprlActiveTab = localStorage.getItem("hrsprlActiveTab");
         if (hrsprlActiveTab) {
             $('#hrs-prl-nav-pills a[href="' + hrsprlActiveTab + '"]').tab(
-                "show"
+                "show",
             );
         }
     });
@@ -2026,7 +2052,7 @@ $("#hrs_stng_container").each(function () {
         var hrsstngActiveTab = localStorage.getItem("hrsstngActiveTab");
         if (hrsstngActiveTab) {
             $('#hrs-stng-nav-pills a[href="' + hrsstngActiveTab + '"]').tab(
-                "show"
+                "show",
             );
         }
 
@@ -2055,7 +2081,7 @@ $("#hrs_stng_container").each(function () {
                                     title: response,
                                 });
                                 table.DataTable().draw("page");
-                            }
+                            },
                         );
                     } else if (result.dismiss === Swal.DismissReason.cancel) {
                         swalWithBootstrapButtons.fire({
@@ -2165,13 +2191,13 @@ $("#hrs_stng_container").each(function () {
                                                     "human_resources/delete_tax_rate",
                                                 {
                                                     id: button.attr(
-                                                        "account_id"
+                                                        "account_id",
                                                     ),
                                                 },
                                                 function (res) {
                                                     toastResponse(res);
                                                 },
-                                                "json"
+                                                "json",
                                             );
                                         } else if (
                                             /* Read more about handling dismissals below */
@@ -2181,12 +2207,12 @@ $("#hrs_stng_container").each(function () {
                                             swalWithBootstrapButtons.fire(
                                                 "Cancelled",
                                                 "Your tax table is safe :)",
-                                                "error"
+                                                "error",
                                             );
                                         }
                                     });
                             });
-                    }
+                    },
                 );
             };
             displayTaxTable($("#taxtable_accordion"));

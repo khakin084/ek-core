@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
 
             // Who performed the action
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('user_id')->nullable();
 
             // Module grouping (e.g. Item Master, Sales, Users)
             $table->string('module')->index();

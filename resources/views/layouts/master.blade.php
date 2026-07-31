@@ -126,7 +126,7 @@ $user = authUser();
 									<img src="{{ asset('images/icon/avatar-01.jpg') }}" alt="John Doe" />
 								</div>
 								<div class="content">
-									<a class="js-acc-btn" href="#">{{ $user->name }}</a>
+									<a class="js-acc-btn" href="#">{{ $user->full_name }}</a>
 								</div>
 								<div class="account-dropdown js-dropdown">
 									<div class="info clearfix">
@@ -137,7 +137,7 @@ $user = authUser();
 										</div>
 										<div class="content">
 											<h5 class="name">
-												<a href="#">{{ $user->name }}</a>
+												<a href="#">{{ $user->full_name }}</a>
 											</h5>
 											<span class="email">{{ $user->email }}</span>
 											<span class="email">{{ $user?->phone }}</span>
@@ -225,7 +225,7 @@ $user = authUser();
 							<img src="{{ asset('images/icon/avatar-01.jpg') }}" alt="John Doe" />
 						</div>
 						<div class="content">
-							<a class="js-acc-btn" href="#">{{ $user->name }}</a>
+							<a class="js-acc-btn" href="#">{{ $user->full_name }}</a>
 						</div>
 						<div class="account-dropdown js-dropdown">
 							<div class="info clearfix">
@@ -236,7 +236,7 @@ $user = authUser();
 								</div>
 								<div class="content">
 									<h5 class="name">
-										<a href="#">{{ $user->name }}</a>
+										<a href="#">{{ $user->full_name }}</a>
 									</h5>
 									<span class="email">{{ $user->email }}</span>
 									<span class="email">{{ $user?->phone }}</span>
@@ -353,6 +353,7 @@ $user = authUser();
 		});
 	</script>
 	<script src="{{ asset('js/core.js') }}"></script>
+	<script src="{{ asset('js/tab-tables.js') }}"></script>
 
 	<!-- Modal JS-->
 	<script src="{{ asset('js/modal_scripts.js') }}"></script>

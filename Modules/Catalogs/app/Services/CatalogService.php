@@ -105,40 +105,8 @@ class CatalogService
 
         return [];
     }
-
-    /**
-     * List items (use carefully; can be large).
-     * Prefer searchItems() for dropdowns.
-     */
-    public function listItems(array $query = []): array
-    {
-        $res = $this->request()
-            ->get($this->url('/api/items'), $query);
-
-        if ($res->successful()) {
-            return $this->parseJson($res) ?? [];
-        }
-
-        $this->logFailure('listItems', $res, ['query' => $query]);
-        return [];
-    }
-
-    /**
-     * Create item.
-     */
-    public function createItem(array $payload): ?array
-    {
-        $res = $this->request()
-            ->post($this->url('/api/items'), $payload);
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('createItem', $res, ['payload' => $this->redact($payload)]);
-        return null;
-    }
-
+    
+    
     /**
      * Update item.
      */
@@ -155,7 +123,7 @@ class CatalogService
 
         $this->logFailure('updateItem', $res, [
             'id' => $id,
-            'payload' => $this->redact($payload),
+            'payload' => redact($payload),
         ]);
 
         return null;
@@ -189,6 +157,104 @@ class CatalogService
         );
 
         return $res->json();
+    }
+
+    /**
+     * --------------------------
+     * Generic resource helpers
+     * --------------------------
+     *
+     * Controllers call these directly with a full path (relative to the
+     * service base URL) instead of going through one-off wrapper methods, e.g.:
+     *
+     *   $catalog->fetchResource('/api/itemmaster/v1/item-groups/get/' . $id, 'getItemGroup')
+     *   $catalog->storeResource('/api/itemmaster/v1/item-groups/store', $payload, 'storeItemGroup')
+     *   $catalog->fetchResource('/api/itemmaster/v1/variety-particulars/get-iivps/' . $id, 'getIivps')
+     *   $catalog->listResource('/api/items', $query, 'listItems')
+     *   $catalog->updateResource('/api/items/' . $id, $payload, 'updateItem')
+     *   $catalog->deleteResource('/api/varieties/' . $id, 'deleteVariety')
+     */
+
+    /**
+     * Generic GET resource fetcher (single resource / get-by-id style).
+     */
+    public function fetchResource(string $path, string $actionName, array $query = []): ?array
+    {
+        $res = $this->request()->get($this->url($path), $query);
+
+        if ($res->successful()) {
+            return $this->parseJson($res);
+        }
+
+        $this->logFailure($actionName, $res, ['path' => $path, 'query' => $query]);
+
+        return null;
+    }
+
+    /**
+     * Generic GET resource fetcher (collections; always returns an array).
+     */
+    public function listResource(string $path, string $actionName, array $query = []): array
+    {
+        $res = $this->request()->get($this->url($path), $query);
+
+        if ($res->successful()) {
+            return $this->parseJson($res) ?? [];
+        }
+
+        $this->logFailure($actionName, $res, ['path' => $path, 'query' => $query]);
+
+        return [];
+    }
+
+    /**
+     * Generic POST/store resource creator.
+     */
+    public function storeResource(string $path, array $payload, string $actionName): ?array
+    {
+        $res = $this->request()
+            ->post($this->url($path), $payload);
+
+        if ($res->successful()) {
+            return $this->parseJson($res);
+        }
+
+        $this->logFailure($actionName, $res, ['path' => $path, 'payload' => redact($payload)]);
+
+        return null;
+    }
+
+    /**
+     * Generic PUT/update resource.
+     */
+    public function updateResource(string $path, array $payload, string $actionName): ?array
+    {
+        $res = $this->request()
+            ->put($this->url($path), $payload);
+
+        if ($res->successful()) {
+            return $this->parseJson($res);
+        }
+
+        $this->logFailure($actionName, $res, ['path' => $path, 'payload' => redact($payload)]);
+
+        return null;
+    }
+
+    /**
+     * Generic DELETE resource.
+     */
+    public function deleteResource(string $path, string $actionName): bool
+    {
+        $res = $this->request()->delete($this->url($path));
+
+        if ($res->successful()) {
+            return true;
+        }
+
+        $this->logFailure($actionName, $res, ['path' => $path]);
+
+        return false;
     }
 
     /**
@@ -325,22 +391,6 @@ class CatalogService
     }
 
     /**
-     * Redact common sensitive fields from payload logs.
-     */
-    protected function redact(array $payload): array
-    {
-        $sensitive = ['password', 'secret', 'token', 'access_token', 'refresh_token'];
-
-        foreach ($sensitive as $k) {
-            if (array_key_exists($k, $payload)) {
-                $payload[$k] = '***';
-            }
-        }
-
-        return $payload;
-    }
-
-    /**
      * Cache key helpers
      */
     protected function cacheKeyItem(int|string $id, string|array|null $types): string
@@ -386,33 +436,6 @@ class CatalogService
         return [];
     }
 
-    public function getInventoryDetail(int|string $itemId): ?array
-    {
-        $res = $this->request()
-            ->get($this->url("/api/items/{$itemId}/inventory-detail"));
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('getInventoryDetail', $res, ['itemId' => $itemId]);
-
-        return null;
-    }
-
-    public function getItemGroup(int|string|null $id = null): ?array
-    {
-        $res = $this->request()->get($this->url("/api/itemmaster/v1/item-groups/get/{$id}"));
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('getItemGroup', $res, ['id' => $id]);
-
-        return null;
-    }
-
     public function getItemGroupsList(array $dt = []): array
     {
         $query = buildDtQuery($dt);
@@ -423,36 +446,6 @@ class CatalogService
         );
 
         return $res->json();
-    }
-
-    public function storeItemGroup(array $payload): ?array
-    {
-        $res = $this->request()
-            ->post($this->url("/api/itemmaster/v1/item-groups/store"), $payload);
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('createItemGroup', $res, [
-            'payload' => $this->redact($payload),
-        ]);
-
-        return null;
-    }
-
-    public function deleteItemGroup(int|string $id): bool
-    {
-        $res = $this->request()
-            ->delete($this->url("/api/item-groups/{$id}"));
-
-        if ($res->successful()) {
-            return true;
-        }
-
-        $this->logFailure('deleteItemGroup', $res, ['id' => $id]);
-
-        return false;
     }
 
     public function getVarietiesList(array $dt = [])
@@ -466,36 +459,7 @@ class CatalogService
 
         return $res->json();
     }
-
-    public function createVariety(array $payload): ?array
-    {
-        $res = $this->request()
-            ->post($this->url("/api/itemmaster/v1/varieties/store"), $payload);
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('createVariety', $res, [
-            'payload' => $this->redact($payload),
-        ]);
-
-        return null;
-    }
-
-    public function deleteVariety(int|string $id): bool
-    {
-        $res = $this->request()
-            ->delete($this->url("/api/varieties/{$id}"));
-
-        if ($res->successful()) {
-            return true;
-        }
-
-        $this->logFailure('deleteVariety', $res, ['id' => $id]);
-
-        return false;
-    }
+    
 
     public function retrieveUnitNLastPrice($item_id, $warehouse_id, $price_type): array
     {
@@ -516,76 +480,5 @@ class CatalogService
         ]);
 
         return [];
-    }
-
-    public function getItemVarietyParticular(int|string|null $id = null): ?array
-    {
-        $res = $this->request()->get($this->url("/api/itemmaster/v1/variety-particulars/get/{$id}"));
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('getItemVarietyParticular', $res, ['id' => $id]);
-
-        return null;
-    }
-
-    public function createVarietyParticular(array $payload): ?array
-    {
-        $res = $this->request()
-            ->post($this->url("/api/itemmaster/v1/variety-particulars/store"), $payload);
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('createVarietyParticular', $res, [
-            'payload' => $this->redact($payload),
-        ]);
-
-        return null;
-    }
-
-    public function getUnit(int|string|null $id = null): ?array
-    {
-        $res = $this->request()->get($this->url("/api/itemmaster/v1/item-groups/get/{$id}"));
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('getItemGroup', $res, ['id' => $id]);
-
-        return null;
-    }
-
-    public function createUnit(array $payload): ?array
-    {
-        $res = $this->request()
-            ->post($this->url("/api/itemmaster/v1/units/store"), $payload);
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('createUnit', $res, [
-            'payload' => $this->redact($payload),
-        ]);
-
-        return null;
-    } 
-    
-    public function getIivps(int|string|null $id = null): ?array
-    {
-        $res = $this->request()->get($this->url("/api/itemmaster/v1/variety-particulars/get-iivps/{$id}"));
-
-        if ($res->successful()) {
-            return $this->parseJson($res);
-        }
-
-        $this->logFailure('getIivps', $res, ['id' => null]);
-
-        return null;
     }
 }

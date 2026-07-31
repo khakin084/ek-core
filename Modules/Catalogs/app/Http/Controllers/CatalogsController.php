@@ -99,9 +99,9 @@ class CatalogsController extends Controller
         ];
 
         if ($id) {
-            $result = $this->catalogService->updateItem($id, $payload);
+            $result = $this->catalogService->updateResource('/api/items/' . $id, $payload, 'updateItem');
         } else {
-            $result = $this->catalogService->createItem($payload);
+            $result = $this->catalogService->storeResource('/api/items', $payload, 'createItem');
         }
 
         if ($result) {
@@ -190,10 +190,7 @@ class CatalogsController extends Controller
 
     public function getItemTrackRecords($id)
     {
-        // Decode the ID (assuming base64urlDecode is a helper function)
         $id = decodeUrlx($id);
-
-        // Get entity dropdown options for STAKEHOLDER type
         $entities_options = $this->dropdownCacheService->get('entities', ['STAKEHOLDER']);
 
         $item = null;
@@ -204,10 +201,12 @@ class CatalogsController extends Controller
             if (!$item) {
                 abort(404, 'Item not found');
             }
-            $inventory_detail = $this->catalogService->getInventoryDetail($id);
+            $inventory_detail = $this->catalogService->fetchResource(
+                "/api/items/{$id}/inventory-detail",
+                'getInventoryDetail'
+            );
         }
 
-        // Render the view
         $ret_data['track_stock_table'] = view(
             'item_master.items.track_stock_table',
             compact('entities_options', 'item', 'inventory_detail')
@@ -230,7 +229,7 @@ class CatalogsController extends Controller
         $item = !is_null($item_id) ? $result2['item'] : [];
 
         // Get all item-variety-particular associations for this variety
-        $iivps = $this->catalogService->getIivps($variety_id);
+        $iivps = $this->catalogService->fetchResource("/api/itemmaster/v1/variety-particulars/get-iivps/{$variety_id}", 'getIivps');
 
         // Build thead and tbody HTML
         $thead = '<thead><tr>';
@@ -277,11 +276,11 @@ class CatalogsController extends Controller
 
     public function rearrangeVariations(Request $request)
     {
-        $itemVarietyId = decodeUrlx($request->input('item_variety'));
-        $variationIds = $request->input('item_variety_particular_ids', []);
-
-        $payload = [];
-        $result = $this->catalogService->rearrangeVariations($payload);
+        $payload = [
+            'item_variety' => decodeUrlx($request->input('item_variety')),
+            'item_variety_particular_ids' => $request->input('item_variety_particular_ids', []),
+        ];
+        $result = $this->catalogService->storeResource("/api/itemmaster/v1/rearrange-variations", $payload, 'rearrangeVariations');
         if ($result) {
             return response()->json([
                 'state' => 'Done',
@@ -305,7 +304,8 @@ class CatalogsController extends Controller
         $id = $id ? decodeUrlx($id) : null;
         $data['item_group'] = null;
         if ($id) {
-            $data['item_group'] = $this->catalogService->getItemGroup($id);
+            $data['item_group'] = $this->catalogService->fetchResource("/api/itemmaster/v1/item-groups/get/{$id}", 'getItemGroup');
+
         }
         return view('catalogs::item_groups.form', $data);
     }
@@ -354,7 +354,7 @@ class CatalogsController extends Controller
                 'id'
             ]);
 
-            $result = $this->catalogService->storeItemGroup($payload);
+            $result = $this->catalogService->storeResource("/api/itemmaster/v1/item-groups/store", $payload, 'storeItemGroup');
 
             if ($result !== null) {
                 return $result;
@@ -377,7 +377,7 @@ class CatalogsController extends Controller
     public function deleteItemGroup($id)
     {
         $id = decodeUrlx($id);
-        $result = $this->catalogService->deleteItemGroup($id);
+        $result = $this->catalogService->deleteResource("/api/item-groups/{$id}", 'deleteItemGroup');
 
         if ($result) {
             return response()->json([
@@ -466,7 +466,7 @@ class CatalogsController extends Controller
                 'notes' => 'nullable|string|max:1000',
             ]);
 
-            $result = $this->catalogService->createVariety($validated);
+            $result = $this->catalogService->storeResource('/api/itemmaster/v1/varieties/store', $validated, 'createVariety');
 
             if ($result !== null) {
                 return $result;
@@ -490,7 +490,7 @@ class CatalogsController extends Controller
     public function deleteVariety($id)
     {
         $id = decodeUrlx($id);
-        $result = $this->catalogService->deleteVariety($id);
+        $result = $this->catalogService->deleteResource("/api/varieties/{$id}", 'deleteVariety');
 
         if ($result) {
             return response()->json([
@@ -521,7 +521,7 @@ class CatalogsController extends Controller
         $unitsOptions = $this->dropdownCacheService->get('item_variety_particulars');
         $itemVarietyParticular = null;
         if ($id) {
-            $itemVarietyParticular = $this->catalogService->getItemVarietyParticular($id);
+            $itemVarietyParticular = $this->catalogService->fetchResource("/api/itemmaster/v1/variety-particulars/get/{$id}", 'getItemVarietyParticular');
         }
 
         return view('catalogs::variety_particulars.form', compact('itemVarietyParticular', 'unitsOptions', 'vpsOptions'));
@@ -537,7 +537,7 @@ class CatalogsController extends Controller
                 'descriptions' => 'nullable|string|max:1000',
             ]);
 
-            $result = $this->catalogService->createVarietyParticular($validated);
+            $result = $this->catalogService->storeResource("/api/itemmaster/v1/variety-particulars/store", $validated, 'createVarietyParticular');
 
             if ($result !== null) {
                 return $result;
@@ -565,7 +565,7 @@ class CatalogsController extends Controller
         $id = !is_null($id) ? decodeUrlx($id) : null;
         $unit = null;
         if ($id > 0) {
-            $unit = $this->catalogService->getUnit($id);
+            $unit = $this->catalogService->fetchResource("/api/itemmaster/v1/item-groups/get/{$id}", 'getUnit');
         }
         return view('catalogs::units.form', compact('unit'));
     }
@@ -581,7 +581,7 @@ class CatalogsController extends Controller
                 'descriptions' => 'nullable|string|max:1000',
             ]);
 
-            $result = $this->catalogService->createUnit($validated);
+            $result = $this->catalogService->storeResource("/api/itemmaster/v1/units/store", $validated, 'createUnit');
 
             if ($result !== null) {
                 return $result;
@@ -600,6 +600,23 @@ class CatalogsController extends Controller
 
             return apiFail('An unexpected error occurred.', 500, $validated, $id);
         }
+    } 
+
+    public function createVarietyParticularValue($id)
+    {
+        $units_options = $this->dropdownCacheService->get('units');
+        $itemVarietyParticular = $this->catalogService->fetchResource("/api/itemmaster/v1/variety-particulars/get/{$id}", 'getItemVarietyParticular');
+
+
+
+
+
+        $variety_particular = $this->db->table('item_variety_particulars')->where('id', $id)->get()->getFirstRow('\App\Models\Items\ItemVarietyParticular');
+        $data['variety_particular_value'] = null;
+        if ($id > 0) {
+            $data['variety_particular_value'] = null; //$this->db->table('item_variety_particular_values')->where('id', $id)->get()->getFirstRow('\App\Models\Items\ItemVarietyParticularValue');
+        }
+        return view('item_master/variety_particular_values/form', $data);
     }
 
 
