@@ -73,8 +73,8 @@
 												<label for="full_name" class="form-control-label">Full Name:</label>
 											</div>
 											<div class="col-12 col-md-8">
-												<input type="text" name="full_name" placeholder="i.e John Doe Zero" class="form-control" value="{{ $edit ? $user->full_name : '' }}" required>
-												<input type="hidden" name="id" value="{{ $edit ? $user->id : '' }}">
+												<input type="text" name="full_name" placeholder="i.e John Doe Zero" class="form-control" value="{{ $edit ? $user['full_name'] : '' }}" required>
+												<input type="hidden" name="id" value="{{ $edit ? $user['id'] : '' }}">
 											</div>
 										</div>
 										<div class="row form-group" style="margin-bottom: 0.2rem;">
@@ -82,7 +82,7 @@
 												<label for="phone" class="form-control-label">Phone:</label>
 											</div>
 											<div class="col-12 col-md-8">
-												<input type="text" name="phone" placeholder="i.e 07XXAAABBB" class="form-control" value="{{ $edit ? $user->phone : '' }}" required>
+												<input type="text" name="phone" placeholder="i.e 07XXAAABBB" class="form-control" value="{{ $edit ? $user['phone'] : '' }}" required>
 											</div>
 										</div>
 										<div class="row form-group" style="margin-bottom: 0.2rem;">
@@ -90,7 +90,7 @@
 												<label for="email" class="form-control-label">Email:</label>
 											</div>
 											<div class="col-12 col-md-8">
-												<input type="email" name="email" placeholder="i.e john.doe@email.com" class="form-control" value="{{ $edit ? $user->email : '' }}" required>
+												<input type="email" name="email" placeholder="i.e john.doe@email.com" class="form-control" value="{{ $edit ? $user['email'] : '' }}" required>
 											</div>
 										</div>
 										<div class="row form-group" style="margin-bottom: 0.2rem;">
@@ -100,8 +100,8 @@
 											<div class="col-12 col-md-3">
 												<select name="gender" id="gender" class="form-control-sm form-control">
 													<option value="">&nbsp;</option>
-													<option {{ $edit && $user->gender == 'MALE' ? 'selected' : '' }} value="MALE">MALE</option>
-													<option {{ $edit && $user->gender == 'FEMALE' ? 'selected' : '' }} value="FEMALE">FEMALE</option>
+													<option {{ $edit && $user['gender'] == 'MALE' ? 'selected' : '' }} value="MALE">MALE</option>
+													<option {{ $edit && $user['gender'] == 'FEMALE' ? 'selected' : '' }} value="FEMALE">FEMALE</option>
 												</select>
 											</div>
 										</div>
@@ -125,7 +125,7 @@
 												<label for="username" class="form-control-label">Username:</label>
 											</div>
 											<div class="col-12 col-md-8">
-												<input type="text" name="username" placeholder="i.e john.doe" class="form-control" value="{{ $edit ? $user->username : '' }}" required>
+												<input type="text" name="username" placeholder="i.e john.doe" class="form-control" value="{{ $edit ? $user['username'] : '' }}" required>
 											</div>
 										</div>
 									</div>
@@ -164,7 +164,7 @@
 											</div>
 											<div class="col-12 col-md-8">
 												<label class="switch switch-text switch-primary">
-													<input type="checkbox" name="active" class="switch-input" {{ $edit && $user->is_active ? 'checked' : '' }}>
+													<input type="checkbox" name="active" class="switch-input" {{ $edit && $user['is_active'] ? 'checked' : '' }}>
 													<span data-on="On" data-off="Off" class="switch-label"></span>
 													<span class="switch-handle"></span>
 												</label>

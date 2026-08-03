@@ -26,6 +26,11 @@ Route::middleware('ek-web')->prefix('user-mgt')->group(function () {
             Route::post('/', 'store')->name('store');
             Route::get('{id}/edit', 'edit')->name('edit')->whereUuid('id');
             Route::put('{id}', 'update')->name('update')->whereUuid('id');
+
+            Route::prefix('{id}/access')->group(function () {
+                Route::get('roles', 'loadRoles')->name('access.roles');
+                Route::get('permissions', 'loadPermissions')->name('access.permissions');
+            });
         });
 
         Route::middleware('perm:user_mgt.users,full_control')
@@ -47,7 +52,9 @@ Route::middleware('ek-web')->prefix('user-mgt')->group(function () {
         });
         Route::middleware('perm:user_mgt.roles,full_control')
             ->delete('{id}', 'destroy')->name('destroy')->whereUuid('id');
+
     });
+
 
     // ---- Access Controls: the permission matrix (leaf: user_mgt.permissions) ----
     // Not a CRUD resource — a view of one user's matrix and a save. Editing the matrix is

@@ -1647,136 +1647,7 @@ $("#approvals_container").each(function () {
 
 $("#hrs_staff_profile").each(function () {
     window.addEventListener("DOMContentLoaded", function () {
-        function get_access_controls() {
-            $.ajax({
-                url:
-                    base_url +
-                    "/user-permissions/" +
-                    $("#hrs_staff_profile").attr("user_id"),
-                type: "GET",
-                beforeSend: function (e) {
-                    startSpinner();
-                },
-                success: function (res) {
-                    $("#access_control_container").html(res);
-
-                    $("#access_control_container")
-                        .find("tbody tr")
-                        .each(function () {
-                            let row = $(this);
-                            row.off("off").on(
-                                "click",
-                                ".access_check",
-                                function () {
-                                    let access_check = $(this);
-                                    let tbody = access_check.closest("tbody");
-                                    row.find(".access_check")
-                                        .not(this)
-                                        .prop("checked", false);
-
-                                    if (
-                                        access_check.is(":checked") &&
-                                        access_check.attr("column") != "NONE" &&
-                                        access_check.attr("parent_id") != ""
-                                    ) {
-                                        let parent_module = tbody.find(
-                                            "#module_" +
-                                                $(this).attr("parent_id") +
-                                                "_READ",
-                                        );
-
-                                        parent_module.prop("checked", true);
-                                        parent_module
-                                            .closest("tr")
-                                            .find(".access_check")
-                                            .not(parent_module)
-                                            .prop("checked", false);
-                                    }
-
-                                    if (
-                                        access_check.is(":checked") &&
-                                        access_check.attr("column") == "NONE" &&
-                                        access_check.attr("parent_id") == ""
-                                    ) {
-                                        let id = access_check
-                                            .attr("id")
-                                            .split("_", 2)[1];
-                                        tbody
-                                            .find(".child_of_" + id)
-                                            .each(function () {
-                                                let child_module = $(this);
-                                                if (
-                                                    child_module.attr(
-                                                        "column",
-                                                    ) != "NONE"
-                                                ) {
-                                                    child_module.prop(
-                                                        "checked",
-                                                        false,
-                                                    );
-                                                } else {
-                                                    if (
-                                                        !child_module.is(
-                                                            ":disabled",
-                                                        )
-                                                    ) {
-                                                        child_module.prop(
-                                                            "checked",
-                                                            true,
-                                                        );
-                                                    }
-                                                }
-                                            });
-                                    }
-
-                                    let form = $(
-                                        "#access_control_container",
-                                    ).find("form");
-                                    let data = form
-                                        .find(":input[value!='']")
-                                        .serialize();
-                                    $.ajax({
-                                        url:
-                                            base_url +
-                                            "/user-permissions/store/" +
-                                            $("#hrs_staff_profile").attr(
-                                                "user_id",
-                                            ),
-                                        type: "POST",
-                                        data: data,
-                                        beforeSend: function (e) {
-                                            startSpinner();
-                                        },
-                                        success: function (res) {
-                                            toastResponse(res);
-                                            get_access_controls();
-                                            stopSpinner();
-                                        },
-                                        error: function (
-                                            xhr,
-                                            textStatus,
-                                            error,
-                                        ) {
-                                            onAjaxError(xhr, textStatus, error);
-                                        },
-                                        complete: function () {
-                                            stopSpinner();
-                                        },
-                                    });
-                                },
-                            );
-                        });
-                    stopSpinner();
-                },
-                error: function (xhr, textStatus, error) {
-                    onAjaxError(xhr, textStatus, error);
-                },
-                complete: function () {
-                    stopSpinner();
-                },
-            });
-        }
-
+        
         let staff_id = $(".staff_contracts_table").attr("staff_id");
         let contractsDataTable = $(".staff_contracts_table").dataTable({
             colReorder: true,
@@ -1858,10 +1729,6 @@ $("#hrs_staff_profile").each(function () {
                     },
                 });
             }
-        });
-
-        $("#pills-access-control-tab").on("shown.bs.tab", function () {
-            get_access_controls();
         });
     });
 });

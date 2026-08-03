@@ -12,7 +12,6 @@
 		$tabs = collect([
 		    ['key' => 'user_mgt.users', 'pane' => 'users', 'label' => 'Users', 'icon' => 'fa fa-users', 'view' => 'usermgt::users.index'],
 		    ['key' => 'user_mgt.roles', 'pane' => 'roles', 'label' => 'Roles', 'icon' => 'fa fa-cogs', 'view' => 'usermgt::roles.index'],
-		    ['key' => 'user_mgt.permissions', 'pane' => 'access-controls', 'label' => 'Access Controls', 'icon' => 'fa fa-cubes', 'view' => 'usermgt::access_controls.index'],
 		])
 		    ->filter(fn($tab) => userCan($tab['key'], 'read'))
 		    ->values();
@@ -164,10 +163,16 @@
 							searchable: false,
 							render: function(id) {
 								return `
-									<div class="table-data-feature pull-left">
-										<button class="btn btn-sm btn-primary js-show-user" data-id="${id}"><i class="zmdi zmdi-eye"></i></button>
-										<button class="btn btn-sm btn-primary js-edit-user" data-id="${id}"><i class="zmdi zmdi-edit"></i></button>
-										<button class="btn btn-sm btn-danger js-delete-user" data-id="${id}"><i class="zmdi zmdi-delete"></i></button>
+									<div class="table-data-feature pull-left" style="display: flex; gap: 2px;">
+										<button class="btn btn-sm btn-success js-show-user" data-id="${id}">
+											<i class="zmdi zmdi-eye"></i>
+										</button>
+										<button class="btn btn-sm btn-primary js-edit-user" data-id="${id}">
+											<i class="zmdi zmdi-edit"></i>
+										</button>
+										<button class="btn btn-sm btn-danger js-delete-user" data-id="${id}">
+											<i class="zmdi zmdi-delete"></i>
+										</button>
 									</div>`;
 							}
 						}
@@ -180,9 +185,16 @@
 				});
 			}
 
+			$(document).on("click", ".js-show-user", function() {
+				const id = $(this).data("id");
+				const userShowUrl = "{{ route('users.show', ['__ID__']) }}";
+				window.location.href = userShowUrl.replace("__ID__", id);
+			});
+
 			$(document).on("click", ".js-edit-user", function() {
 				const id = $(this).data("id");
-				// open edit modal / navigate
+				const userEditUrl = "{{ route('users.edit', ['__ID__']) }}";
+				window.location.href = userEditUrl.replace("__ID__", id);
 			});
 
 			$(document).on("click", ".js-delete-user", function() {
@@ -238,6 +250,7 @@
 				const id = $(this).data("id");
 				// open edit modal / navigate
 			});
+
 			$(document).on("click", ".js-delete-role", function() {
 				const id = $(this).data("id");
 				// confirm + delete, then $("#rolesTable").DataTable().ajax.reload(null, false);

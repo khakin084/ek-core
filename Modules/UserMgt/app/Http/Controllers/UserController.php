@@ -88,7 +88,12 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        return view('usermgt::show');
+        $user = $this->userMgtService->getUser($id);
+        return view('usermgt::users.show', [
+            'tenant' => authTenant(),
+            'title' => strtoupper($user['full_name']),
+            'user' => $user
+        ]);
     }
 
     /**
@@ -96,7 +101,11 @@ class UserController extends Controller
      */
     public function edit($id)
     {
-        return view('usermgt::edit');
+        $user = $this->userMgtService->getUser($id);
+        return view('usermgt::users.create', [
+            'title' => 'Edit User',
+            'user' => $user
+        ]);
     }
 
     /**
@@ -113,12 +122,13 @@ class UserController extends Controller
     {
     }
 
-    public function dataTable(Request $request){
+    public function dataTable(Request $request)
+    {
 
         $dt = dtParams($request);
 
         $result = $this->userMgtService->getUsersDataTable($dt);
-        
+
         return response()->json($result ?? [
             'draw' => $dt['draw'],
             'recordsTotal' => 0,
@@ -126,6 +136,78 @@ class UserController extends Controller
             'data' => [],
             'error' => 'Failed to load item groups',
         ], $result ? 200 : 502);
-        
+    }
+
+    /**
+     * Render the roles pane: every tenant role, with the user's current ones pre-checked.
+     */
+    public function loadRoles(Request $request, string $id)
+    {
+        $roles = $this->userMgtService->listResource('/api/v1/internal/roles', 'listRoles', ['tenant' => authTenantId()]) ?? [];
+        $userRoles = $this->userMgtService->listResource("/api/v1/internal/users/{$id}/roles", 'listUserRoles') ?? [];
+
+        // syncRoles works on NAMES. Accept [{name}], [{label}], or bare ["Accountant"].
+        $assignedNames = collect($userRoles)
+            ->map(fn($r) => is_array($r) ? ($r['name'] ?? $r['label'] ?? null) : $r)
+            ->filter()
+            ->values()
+            ->all();
+
+        return view('usermgt::users.access_controls._roles', [
+            'userId' => $id,
+            'roles' => $roles,
+            'assignedNames' => $assignedNames,
+        ]);
+    }
+
+    /**
+     * Render the permission matrix: the module registry with each module's current ordinal
+     * level preselected. A module absent from the map is level 0 (NONE).
+     */
+    public function loadPermissions(Request $request, string $id)
+    {
+        // The catalog IS the module registry — two-level tree { key, label, max_level, children[] }.
+        $modules = $this->userMgtService->listResource('/api/v1/internal/permissions/catalog', 'permissionCatalog', ['tenant' => authTenantId()]) ?? [];
+
+        // The user's effective map: { module_key: level_int }. This is payload()['perms'] — the
+        // same thing RemotePermissionResolver already consumes, so no new endpoint is needed.
+        $assignments = $this->userMgtService->fetchResource("/api/v1/internal/users/{$id}/permissions", 'userPermissions') ?? [];
+
+        return view('usermgt::users.access_controls._permissions', [
+            'userId' => $id,
+            'modules' => $modules,
+            'assignments' => $assignments,
+            // Levels come from the enum (via the catalog response), not a hardcoded local config —
+            // one source of truth. The catalog ships max_level per module so the blade renders the
+            // right number of columns (2 for containers, 4 for leaves).
+            'levels' => $this->userMgtService->fetchResource('/api/v1/internal/permissions/levels', 'permissionLevels')
+                ?? [
+                    ['key' => 'none', 'label' => 'NONE', 'value' => 0],
+                    ['key' => 'read', 'label' => 'READ', 'value' => 1],
+                    ['key' => 'read_write', 'label' => 'READ/WRITE', 'value' => 2],
+                    ['key' => 'full_control', 'label' => 'FULL CONTROL', 'value' => 3],
+                ],
+        ]);
+    }
+
+    /**
+     * Persist both panes in one shot. Roles sync + module levels set, coalesced to a SINGLE
+     * permission_version bump so downstream services refetch once, not twice.
+     */
+    public function save(Request $request, string $id)
+    {
+        $data = $request->validate([
+            'roles' => 'sometimes|array',
+            'roles.*' => 'string',
+            'permissions' => 'sometimes|array',      // { module_key: level_int }
+            'permissions.*' => 'integer|between:0,3',
+        ]);
+
+        $this->userMgtService->storeResource("/api/v1/internal/users/{$id}/access", [
+            'roles' => $data['roles'] ?? [],
+            'permissions' => $data['permissions'] ?? [],
+        ], 'saveAccess');
+
+        return back()->with('status', 'Access updated.');
     }
 }

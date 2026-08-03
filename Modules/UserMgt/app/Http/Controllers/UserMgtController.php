@@ -36,8 +36,4 @@ class UserMgtController extends Controller
             'title' => 'User Mgt',
         ]);
     }
-
-    public function rolesDataTable(){
-
-    }
 }

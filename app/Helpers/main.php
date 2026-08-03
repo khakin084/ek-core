@@ -318,20 +318,30 @@ if (!function_exists('applyDtOrdering')) {
     }
 }
 
+
 if (!function_exists('dtResponse')) {
 
     /**
-     * Build a DataTables response with search, filters, ordering and paging.
+     * Turns a query into a ready-to-return DataTables response.
      *
-     * @param Builder|QueryBuilder $baseQuery   Query without filters/search (used for recordsTotal)
-     * @param array $dt                         Output of dtParams()
-     * @param array $searchable                 Columns searchable by global search
-     * @param array $sortable                   Allowed columns for ordering
-     * @param callable|null $filters            function ($q, $dt) { ... } apply custom filters
-     * @param array|null $select                Optional select columns
-     * @param string $defaultSortCol
-     * @param string $defaultSortDir
-     * @return array
+     * Handles the four things every DataTables endpoint needs: the global
+     * search box, any custom filters you pass in, safe column ordering, and
+     * paging. Also gives you the two counts DataTables expects
+     * (recordsTotal = everything, recordsFiltered = after search/filters).
+     *
+     * @param Builder|QueryBuilder $baseQuery  Your query BEFORE search/filters.
+     *                                         Used as-is for the total count,
+     *                                         then cloned for the real work.
+     * @param array $dt          The array you got back from dtParams().
+     * @param array $searchable  Columns the global search box is allowed to hit.
+     * @param array $sortable    Columns the user is allowed to sort by (whitelist).
+     * @param callable|null $filters  Optional. function ($q, $dt) { ... } to apply
+     *                                your own filters (user_filter, date range, etc).
+     * @param array|null $select      Optional. Limit the returned columns.
+     * @param string $defaultSortCol  Column to sort by when the user hasn't picked one.
+     * @param string $defaultSortDir  'asc' or 'desc' for that default sort.
+     *
+     * @return array  ['draw', 'recordsTotal', 'recordsFiltered', 'data']
      */
     function dtResponse(
         $baseQuery,
@@ -344,23 +354,29 @@ if (!function_exists('dtResponse')) {
         string $defaultSortDir = 'desc'
     ): array {
 
-        // Total count (no search/filters)
+        // "recordsTotal" is the grand total with nothing filtered out, so we
+        // count off a fresh clone before touching anything.
         $recordsTotal = (clone $baseQuery)->count();
 
-        // Work query (apply filters/search/order/paging)
+        // Everything below builds on this working copy, leaving $baseQuery clean.
         $q = clone $baseQuery;
 
-        // Custom filters (user_filter, created_from, created_to, etc.)
+        // Your custom filters run first (user_filter, created_from/to, etc).
         if (is_callable($filters)) {
             $filters($q, $dt);
         }
 
-        // Global search
+        // Global search box.
         $search = trim((string) ($dt['search'] ?? ''));
         if ($search !== '' && !empty($searchable)) {
+            // Postgres needs ILIKE for case-insensitive matching; MySQL's LIKE
+            // is already case-insensitive, so pick based on the DB driver.
             $driver = $q->getConnection()->getDriverName();
             $like = $driver === 'pgsql' ? 'ILIKE' : 'LIKE';
 
+            // Wrap the OR conditions in their own group so they don't leak out
+            // and accidentally widen the filters applied above.
+            // i.e. "... AND (colA LIKE x OR colB LIKE x OR ...)"
             $q->where(function ($qq) use ($search, $searchable, $like) {
                 foreach (array_values($searchable) as $i => $col) {
                     if ($i === 0) {
@@ -372,10 +388,14 @@ if (!function_exists('dtResponse')) {
             });
         }
 
-        // Filtered count (after filters + search)
+        // "recordsFiltered" is the count AFTER search/filters but BEFORE paging.
         $recordsFiltered = (clone $q)->count();
 
-        // Ordering (safe)
+        // --- Ordering ---
+        // DataTables sends the sorted column as a numeric index, not a name.
+        // We map that index back to a column name, then only allow it if it's
+        // in the $sortable whitelist. This is the important bit: never sort by
+        // a raw client-supplied string, or you open the door to SQL injection.
         $orders = $dt['order'] ?? [];
         $columns = $dt['columns'] ?? [];
 
@@ -388,7 +408,7 @@ if (!function_exists('dtResponse')) {
 
                 $colIndex = (int) $order['column'];
                 $dir = strtolower($order['dir']) === 'desc' ? 'desc' : 'asc';
-                $colName = $columns[$colIndex]['data'] ?? null;
+                $colName = $columns[$colIndex]['data'] ?? null; // index -> name
 
                 if ($colName && in_array($colName, $sortable, true)) {
                     $q->orderBy($colName, $dir);
@@ -397,17 +417,20 @@ if (!function_exists('dtResponse')) {
             }
         }
 
+        // Nothing valid to sort by? Fall back to the default so results are
+        // at least in a stable order.
         if (!$appliedOrder) {
             $q->orderBy($defaultSortCol, strtolower($defaultSortDir) === 'asc' ? 'asc' : 'desc');
         }
 
-        // Paging
+        // --- Paging ---
+        // Clamp so start can't go negative and length is always at least 1.
         $start = (int) ($dt['start'] ?? 0);
         $length = (int) ($dt['length'] ?? 10);
 
         $q->skip(max(0, $start))->take(max(1, $length));
 
-        // Select
+        // Optionally trim down to just the columns the caller asked for.
         if (is_array($select) && !empty($select)) {
             $data = $q->get($select);
         } else {

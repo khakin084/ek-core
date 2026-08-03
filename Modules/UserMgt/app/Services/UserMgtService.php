@@ -3,6 +3,7 @@
 namespace Modules\UserMgt\Services;
 
 use App\Helpers\ServiceDiscoveryHelper;
+use App\Services\AuthenticationService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
@@ -19,11 +20,23 @@ class UserMgtService
     protected int $retryTimes = 2;
     protected int $retrySleepMs = 150;
 
-    // Short cache for by-id lookups (e.g. resolving a selected dropdown user fast)
     protected int $userCacheTtlSeconds = 600; // 10 minutes
 
+    /**
+     * Endpoints under these prefixes are MACHINE-FACING (guarded by EnsureClientToken in
+     * ek-auth). Calls to them authenticate with the SERVICE token, not the user's — sending
+     * the user token yields 403 "This endpoint requires a service token".
+     *
+     * Everything else keeps forwarding the user's token so ek-auth enforces that user's own
+     * tenant and permissions.
+     */
+    protected array $internalPrefixes = [
+        '/api/v1/internal/',
+    ];
+
     public function __construct(
-        protected ServiceDiscoveryHelper $serviceDiscovery
+        protected ServiceDiscoveryHelper $serviceDiscovery,
+        protected AuthenticationService $auth,
     ) {
         $this->baseUrl = rtrim($this->serviceDiscovery->serviceUrl('ek-auth', ''), '/');
     }
@@ -34,9 +47,6 @@ class UserMgtService
      * --------------------------
      */
 
-    /**
-     * Fetch a single user by ID.
-     */
     public function getUser(int|string $id, bool $useCache = true): ?array
     {
         $cacheKey = $this->cacheKeyUser($id);
@@ -48,8 +58,8 @@ class UserMgtService
             }
         }
 
-        $res = $this->request()
-            ->get($this->url("/api/usermgt/v1/users/get/{$id}"));
+        $path = "/api/usermgt/v1/users/get/{$id}";
+        $res = $this->request($path)->get($this->url($path));
 
         if ($res->successful()) {
             $data = $this->parseJson($res);
@@ -66,22 +76,12 @@ class UserMgtService
         return null;
     }
 
-    /**
-     * Search users (best for dropdowns / typeahead).
-     */
-    public function searchUsers(
-        string $q,
-        int $limit = 20,
-        int $page = 1,
-        array $extraFilters = []
-    ): array {
-        $query = array_merge(
-            ['q' => $q, 'limit' => $limit, 'page' => $page],
-            $extraFilters
-        );
+    public function searchUsers(string $q, int $limit = 20, int $page = 1, array $extraFilters = []): array
+    {
+        $query = array_merge(['q' => $q, 'limit' => $limit, 'page' => $page], $extraFilters);
 
-        $res = $this->request()
-            ->get($this->url('/api/usermgt/v1/users/search'), $query);
+        $path = '/api/usermgt/v1/users/search';
+        $res = $this->request($path)->get($this->url($path), $query);
 
         if ($res->successful()) {
             return $this->parseJson($res) ?? [];
@@ -92,19 +92,13 @@ class UserMgtService
         return [];
     }
 
-    /**
-     * Create a user in ek-auth.
-     *
-     * $photo is the uploaded "attachments" file from the form, if any.
-     * When present we forward as multipart; otherwise a plain JSON POST.
-     */
     public function storeUser(array $payload, ?UploadedFile $photo = null): ?array
     {
         $path = '/api/usermgt/v1/users/store';
 
         $res = $photo
-            ? $this->multipartRequest($payload, $photo)->post($this->url($path))
-            : $this->request()->post($this->url($path), $payload);
+            ? $this->multipartRequest($path, $payload, $photo)->post($this->url($path))
+            : $this->request($path)->post($this->url($path), $payload);
 
         if ($res->successful()) {
             return $this->parseJson($res);
@@ -115,18 +109,15 @@ class UserMgtService
         return null;
     }
 
-    /**
-     * Update a user in ek-auth.
-     */
     public function updateUser(int|string $id, array $payload, ?UploadedFile $photo = null): ?array
     {
-        // Multipart + PUT is awkward across HTTP clients, so tunnel the method.
         if ($photo) {
-            $res = $this->multipartRequest($payload + ['_method' => 'PUT'], $photo)
-                ->post($this->url("/api/usermgt/v1/users/{$id}"));
+            $path = "/api/usermgt/v1/users/{$id}";
+            $res = $this->multipartRequest($path, $payload + ['_method' => 'PUT'], $photo)
+                ->post($this->url($path));
         } else {
-            $res = $this->request()
-                ->put($this->url("/api/usermgt/v1/users/{$id}"), $payload);
+            $path = "/api/usermgt/v1/users/{$id}";
+            $res = $this->request($path)->put($this->url($path), $payload);
         }
 
         if ($res->successful()) {
@@ -134,18 +125,15 @@ class UserMgtService
             return $this->parseJson($res);
         }
 
-        $this->logFailure('updateUser', $res, [
-            'id' => $id,
-            'payload' => $this->redactUser($payload),
-        ]);
+        $this->logFailure('updateUser', $res, ['id' => $id, 'payload' => $this->redactUser($payload)]);
 
         return null;
     }
 
     public function deleteUser(int|string $id): bool
     {
-        $res = $this->request()
-            ->delete($this->url("/api/usermgt/v1/users/{$id}"));
+        $path = "/api/usermgt/v1/users/{$id}";
+        $res = $this->request($path)->delete($this->url($path));
 
         if ($res->successful()) {
             $this->forgetUserCache($id);
@@ -157,13 +145,10 @@ class UserMgtService
         return false;
     }
 
-    /**
-     * Toggle / set active status (handy for the switch in your form/list).
-     */
     public function setActive(int|string $id, bool $active): ?array
     {
-        $res = $this->request()
-            ->patch($this->url("/api/usermgt/v1/users/{$id}/active"), ['active' => $active]);
+        $path = "/api/usermgt/v1/users/{$id}/active";
+        $res = $this->request($path)->patch($this->url($path), ['active' => $active]);
 
         if ($res->successful()) {
             $this->forgetUserCache($id);
@@ -175,17 +160,12 @@ class UserMgtService
         return null;
     }
 
-    /**
-     * DataTable endpoint for the users list.
-     */
     public function getUsersDataTable(array $dt = []): array
     {
         $query = buildDtQuery($dt, ['user_type', 'is_active', 'gender']);
 
-        $res = $this->request()->get(
-            $this->url('/api/usermgt/v1/users/list'),
-            $query
-        );
+        $path = '/api/usermgt/v1/users/list';
+        $res = $this->request($path)->get($this->url($path), $query);
 
         return $res->json();
     }
@@ -195,19 +175,17 @@ class UserMgtService
      * Generic resource helpers
      * --------------------------
      *
-     * Controllers can call these directly with a full path (relative to the
-     * ek-auth base URL) instead of adding one-off wrappers, e.g.:
+     * These take a full path; the correct token (user vs service) is chosen automatically
+     * from the path, so the Access Controls calls to /api/v1/internal/* just work:
      *
-     *   $auth->fetchResource('/api/usermgt/v1/roles/get/' . $id, 'getRole')
-     *   $auth->storeResource('/api/usermgt/v1/roles/store', $payload, 'storeRole')
-     *   $auth->listResource('/api/usermgt/v1/permissions', 'listPermissions', $query)
-     *   $auth->updateResource('/api/usermgt/v1/roles/' . $id, $payload, 'updateRole')
-     *   $auth->deleteResource('/api/usermgt/v1/roles/' . $id, 'deleteRole')
+     *   $svc->listResource('/api/v1/internal/roles', 'listRoles')
+     *   $svc->fetchResource("/api/v1/internal/users/{$id}/permissions", 'userPermissions')
+     *   $svc->storeResource("/api/v1/internal/users/{$id}/access", $payload, 'saveAccess')
      */
 
     public function fetchResource(string $path, string $actionName, array $query = []): ?array
     {
-        $res = $this->request()->get($this->url($path), $query);
+        $res = $this->request($path)->get($this->url($path), $query);
 
         if ($res->successful()) {
             return $this->parseJson($res);
@@ -220,7 +198,7 @@ class UserMgtService
 
     public function listResource(string $path, string $actionName, array $query = []): array
     {
-        $res = $this->request()->get($this->url($path), $query);
+        $res = $this->request($path)->get($this->url($path), $query);
 
         if ($res->successful()) {
             return $this->parseJson($res) ?? [];
@@ -233,7 +211,7 @@ class UserMgtService
 
     public function storeResource(string $path, array $payload, string $actionName): ?array
     {
-        $res = $this->request()->post($this->url($path), $payload);
+        $res = $this->request($path)->post($this->url($path), $payload);
 
         if ($res->successful()) {
             return $this->parseJson($res);
@@ -246,7 +224,7 @@ class UserMgtService
 
     public function updateResource(string $path, array $payload, string $actionName): ?array
     {
-        $res = $this->request()->put($this->url($path), $payload);
+        $res = $this->request($path)->put($this->url($path), $payload);
 
         if ($res->successful()) {
             return $this->parseJson($res);
@@ -259,7 +237,7 @@ class UserMgtService
 
     public function deleteResource(string $path, string $actionName): bool
     {
-        $res = $this->request()->delete($this->url($path));
+        $res = $this->request($path)->delete($this->url($path));
 
         if ($res->successful()) {
             return true;
@@ -277,23 +255,17 @@ class UserMgtService
      */
 
     /**
-     * Shared HTTP client (JSON): correlation id, token + audit propagation,
-     * retries and timeout.
+     * Shared JSON client. Pass the target $path so the correct token is chosen.
      */
-    protected function request(?int $timeoutSeconds = null): PendingRequest
+    protected function request(string $path = '', ?int $timeoutSeconds = null): PendingRequest
     {
-        return $this->baseRequest($timeoutSeconds)->asJson();
+        return $this->baseRequest($path, $timeoutSeconds)->asJson();
     }
 
-    /**
-     * Multipart variant for file uploads. Same headers/token/retries, but the
-     * body is sent as multipart/form-data with the photo attached.
-     */
-    protected function multipartRequest(array $fields, UploadedFile $photo): PendingRequest
+    protected function multipartRequest(string $path, array $fields, UploadedFile $photo): PendingRequest
     {
-        $req = $this->baseRequest()->asMultipart();
+        $req = $this->baseRequest($path)->asMultipart();
 
-        // Flatten scalar fields; skip nulls so we don't send "null" strings.
         foreach ($fields as $key => $value) {
             if ($value === null) {
                 continue;
@@ -309,15 +281,14 @@ class UserMgtService
     }
 
     /**
-     * Common request scaffolding shared by JSON and multipart clients.
+     * Common scaffolding. Chooses the token by path: SERVICE token for internal machine
+     * endpoints, the USER token for everything else.
      */
-    protected function baseRequest(?int $timeoutSeconds = null): PendingRequest
+    protected function baseRequest(string $path = '', ?int $timeoutSeconds = null): PendingRequest
     {
         $timeout = $timeoutSeconds ?? $this->timeoutSeconds;
 
-        $headers = [
-            'X-Correlation-ID' => $this->correlationId(),
-        ];
+        $headers = ['X-Correlation-ID' => $this->correlationId()];
 
         if (app()->runningInConsole() === false) {
             foreach (['X-AUDIT-MODULE', 'X-AUDIT-ENTITY', 'X-AUDIT-RECORD-ID'] as $h) {
@@ -333,12 +304,27 @@ class UserMgtService
             ->acceptJson()
             ->withHeaders($headers);
 
-        $accessToken = session('access_token');
-        if (!empty($accessToken)) {
-            $req = $req->withToken($accessToken);
+        return $req->withToken($this->tokenFor($path));
+    }
+
+    /**
+     * Internal (machine) endpoints -> service token. Everything else -> the user's token.
+     *
+     * This is the fix for the 403: the Access Controls screen hits /api/v1/internal/*, which
+     * ek-auth guards with EnsureClientToken (service tokens only). A user token there is
+     * rejected by design.
+     */
+    protected function tokenFor(string $path): ?string
+    {
+        $normalised = '/' . ltrim($path, '/');
+
+        foreach ($this->internalPrefixes as $prefix) {
+            if (str_starts_with($normalised, $prefix)) {
+                return $this->auth->serviceToken();
+            }
         }
 
-        return $req;
+        return session('access_token');
     }
 
     protected function url(string $path): string
@@ -400,9 +386,6 @@ class UserMgtService
         return $body;
     }
 
-    /**
-     * Redact sensitive fields before logging user payloads.
-     */
     protected function redactUser(array $payload): array
     {
         foreach (['password', 'passconf', 'password_confirmation'] as $secret) {
