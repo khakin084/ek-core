@@ -2,6 +2,7 @@
 @section('body-contents')
 
 	@php
+
 		// The tab set for this container. Each tab is gated on its child LEAF key via
 		// authCan() — a permission check, not a route check, because tabs render inline.
 		// A child the user cannot read produces no tab AND no rendered pane, so an
@@ -9,10 +10,7 @@
 		//
 		// This map (key -> pane/label/icon/view) is the one container-specific bit; every
 		// tabbed container index has its own. Everything else below is the standard shell.
-		$tabs = collect([
-		    ['key' => 'user_mgt.users', 'pane' => 'users', 'label' => 'Users', 'icon' => 'fa fa-users', 'view' => 'usermgt::users.index'],
-		    ['key' => 'user_mgt.roles', 'pane' => 'roles', 'label' => 'Roles', 'icon' => 'fa fa-cogs', 'view' => 'usermgt::roles.index'],
-		])
+		$tabs = collect([['key' => 'user_mgt.users', 'pane' => 'users', 'label' => 'Users', 'icon' => 'fa fa-users', 'view' => 'usermgt::users.index'], ['key' => 'user_mgt.roles', 'pane' => 'roles', 'label' => 'Roles', 'icon' => 'fa fa-cogs', 'view' => 'usermgt::roles.index']])
 		    ->filter(fn($tab) => userCan($tab['key'], 'read'))
 		    ->values();
 	@endphp
@@ -77,21 +75,6 @@
 									<div class="tab-content" id="usermgtTabContent">
 										@foreach ($tabs as $tab)
 											<div class="tab-pane fade @if ($loop->first) show active @endif" style="min-height: 650px; overflow-y: auto;" id="{{ $tab['pane'] }}" role="tabpanel" aria-labelledby="{{ $tab['pane'] }}-tab">
-												<div class="row">
-													<div class="text-left col-md-6">
-														<h2 class="title-3 m-b-30">
-															<i class="{{ $tab['icon'] }}"></i>&nbsp;&nbsp;{{ $tab['label'] }}
-														</h2>
-													</div>
-
-													@if (userCan('user_mgt.users', 'read_write'))
-														<div class="text-right col-md-6">
-															<a href="{{ route('users.create') }}" type="button" title="Add New User" class="btn btn-primary btn-sm">
-																New <i class="fa fa-plus"></i></a>
-														</div>
-													@endif
-												</div>
-
 												{{-- Only authorised panes reach this loop, so the sub-view never
 												     renders for a user who cannot read it. --}}
 												@include($tab['view'])
@@ -111,6 +94,9 @@
 @section('scripts')
 	<script>
 		$(document).ready(function() {
+
+			const roleAuditData = @json($auditData['role']);
+
 			divDismissible();
 
 			initTabPersistence($('#userMgtNav'), "usermgtActiveTab");
@@ -121,7 +107,7 @@
 					storageKey: "userMgtActiveTab",
 					tables: {
 						"#users": initUsersTable,
-						"#roles": initRolesTable,
+						"#roles": initRolesTable
 					}
 				});
 			});
@@ -213,18 +199,8 @@
 							name: "name"
 						},
 						{
-							data: "guard_name",
-							name: "guard_name"
-						},
-						{
-							data: "permissions_count",
-							name: "permissions_count",
-							orderable: false,
-							searchable: false
-						},
-						{
-							data: "created_at",
-							name: "created_at"
+							data: "permission_count",
+							name: "permission_count",
 						},
 						{
 							data: "id",
@@ -233,8 +209,11 @@
 							searchable: false,
 							render: function(id) {
 								return `
-                        <button class="btn btn-sm btn-primary js-edit-role" data-id="${id}">Edit</button>
-                        <button class="btn btn-sm btn-danger js-delete-role" data-id="${id}">Delete</button>`;
+									<div class="table-data-feature pull-left" style="display: flex; gap: 2px;">
+										<button class="btn btn-sm btn-success js-show-role" data-id="${id}"><i class="zmdi zmdi-eye"></i></button>
+										<button class="btn btn-sm btn-primary js-edit-role" data-id="${id}"><i class="zmdi zmdi-edit"></i></button>
+                        				<button class="btn btn-sm btn-danger js-delete-role" data-id="${id}"><i class="zmdi zmdi-delete"></i></button>
+									</div>`;
 							}
 						}
 					],
@@ -246,9 +225,17 @@
 				});
 			}
 
+			$(document).on("click", ".js-show-role", function() {
+				const id = $(this).data("id");
+				const roleShowUrl = "{{ route('roles.show', ['__ID__']) }}";
+				window.location.href = roleShowUrl.replace("__ID__", id);
+			});
+
 			$(document).on("click", ".js-edit-role", function() {
 				const id = $(this).data("id");
-				// open edit modal / navigate
+				const roleEditUrl = "{{ route('roles.edit', ['__ID__']) }}";
+				let url = roleEditUrl.replace("__ID__", id);
+				edit(url, 'NRML-BTN', 'rolesContainer', null, roleAuditData)
 			});
 
 			$(document).on("click", ".js-delete-role", function() {

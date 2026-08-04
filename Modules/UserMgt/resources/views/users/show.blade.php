@@ -172,8 +172,8 @@
 			});
 
 			function loadAccessControl() {
-				loadAccessPane('{{ route('users.access.permissions',[$user['id']]) }}', '#accessPermissions');
-				loadAccessPane('{{ route('users.access.roles',[$user['id']]) }}', '#accessRoles');
+				loadAccessPane('{{ route('users.access.permissions', [$user['id']]) }}', '#accessPermissions');
+				loadAccessPane('{{ route('users.access.roles', [$user['id']]) }}', '#accessRoles');
 			}
 
 			function loadAccessPane(url, target) {
@@ -183,9 +183,89 @@
 					.fail(() => $(target).html('<div class="text-danger p-3">Failed to load. Please retry.</div>'));
 			}
 
+			function collectRoles($scope) {
+				return $scope.find('input.role-check:checked').map((_, el) => el.value).get();
+			}
 
+			/**
+			 * Read the matrix into a complete { module_key: level_int } map.
+			 * Because every row has a NONE radio checked by default, this always returns
+			 * a level for EVERY module — that's what makes the save a true mass-assign
+			 * rather than a patch of only the rows the admin touched.
+			 */
+			function collectPermissions($scope) {
+				const map = {};
+				$scope.find('input[type="radio"]:checked').each(function() {
+					const name = $(this).attr('name'); // e.g. permissions[ACCOUNTS]
+					const key = name.substring(name.indexOf('[') + 1, name.indexOf(']'));
+					map[key] = parseInt(this.value, 10);
+				});
+				return map;
+			}
 
+			function saveUserAccess() {
+				const $perm = $('#accessPermissions');
+				const $roles = $('#accessRoles');
 
+				const permissions = collectPermissions($perm);
+
+				// Same complete-map guard as before.
+				const rendered = $perm.find('.perm-matrix tr')
+					.filter((_, tr) => $(tr).find('input[type="radio"]').length).length;
+				if (Object.keys(permissions).length !== rendered) {
+					accessNotify('Some rows have no level selected — please review before saving.', 'warning');
+					return;
+				}
+
+				const $btn = $('#saveUserAccess');
+				$.ajax({
+					url: "{{ route('users.access.save', [$user['id']]) }}",
+					method: 'POST',
+					contentType: 'application/json',
+					headers: {
+						'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+					},
+					// Both keys present → one request, one pv bump. roles:[] here means
+					// "user genuinely has no roles", which is the correct explicit-clear signal.
+					data: JSON.stringify({
+						roles: collectRoles($roles),
+						permissions
+					}),
+					beforeSend: () => setBtnLoading($btn, true),
+					success: (res) => accessNotify((res && res.message) || 'Access updated.', 'success'),
+					error: (xhr) => accessNotify(
+						(xhr.responseJSON && xhr.responseJSON.message) || 'Save failed. Please retry.', 'danger'),
+					complete: () => setBtnLoading($btn, false)
+				});
+			}
+
+			function setBtnLoading($btn, loading) {
+				if (loading) {
+					$btn.prop('disabled', true)
+						.data('html', $btn.html())
+						.html('<i class="fa fa-spinner fa-spin"></i>&nbsp;Saving...');
+				} else {
+					$btn.prop('disabled', false).html($btn.data('html') || 'Save');
+				}
+			}
+
+			// Swap for your toastr/sufee-alert if you have one wired.
+			function accessNotify(message, type) {
+				if (window.toastr) {
+					toastr[type === 'danger' ? 'error' : type](message);
+					return;
+				}
+				alert(message);
+			}
+
+			// Mark the matrix dirty when a level changes (drives the unsaved-changes guard).
+			$(document).on('change', '.perm-matrix input[type="radio"]', function() {
+				$(this).closest('.perm-matrix').data('dirty', true);
+			});
+
+			$(document).on('click', '#saveUserAccess', function() {
+				saveUserAccess() 
+			});
 		});
 	</script>
 @endsection

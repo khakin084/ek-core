@@ -89,6 +89,7 @@ class UserController extends Controller
     public function show($id)
     {
         $user = $this->userMgtService->getUser($id);
+        auditLog('User Mgt', 'User', $user['id'], $user, 'View');
         return view('usermgt::users.show', [
             'tenant' => authTenant(),
             'title' => strtoupper($user['full_name']),
@@ -143,8 +144,8 @@ class UserController extends Controller
      */
     public function loadRoles(Request $request, string $id)
     {
-        $roles = $this->userMgtService->listResource('/api/v1/internal/roles', 'listRoles', ['tenant' => authTenantId()]) ?? [];
-        $userRoles = $this->userMgtService->listResource("/api/v1/internal/users/{$id}/roles", 'listUserRoles') ?? [];
+        $roles = $this->userMgtService->listResource('/api/usermgt/v1/access/roles', 'listRoles', ['tenant' => authTenantId()]) ?? [];
+        $userRoles = $this->userMgtService->listResource("/api/usermgt/v1/access/users/{$id}/roles", 'listUserRoles') ?? [];
 
         // syncRoles works on NAMES. Accept [{name}], [{label}], or bare ["Accountant"].
         $assignedNames = collect($userRoles)
@@ -167,11 +168,11 @@ class UserController extends Controller
     public function loadPermissions(Request $request, string $id)
     {
         // The catalog IS the module registry — two-level tree { key, label, max_level, children[] }.
-        $modules = $this->userMgtService->listResource('/api/v1/internal/permissions/catalog', 'permissionCatalog', ['tenant' => authTenantId()]) ?? [];
+        $modules = $this->userMgtService->listResource('/api/usermgt/v1/access/permissions/catalog', 'permissionCatalog', ['tenant' => authTenantId()]) ?? [];
 
         // The user's effective map: { module_key: level_int }. This is payload()['perms'] — the
         // same thing RemotePermissionResolver already consumes, so no new endpoint is needed.
-        $assignments = $this->userMgtService->fetchResource("/api/v1/internal/users/{$id}/permissions", 'userPermissions') ?? [];
+        $assignments = $this->userMgtService->fetchResource("/api/usermgt/v1/access/users/{$id}/permissions", 'userPermissions') ?? [];
 
         return view('usermgt::users.access_controls._permissions', [
             'userId' => $id,
@@ -180,7 +181,7 @@ class UserController extends Controller
             // Levels come from the enum (via the catalog response), not a hardcoded local config —
             // one source of truth. The catalog ships max_level per module so the blade renders the
             // right number of columns (2 for containers, 4 for leaves).
-            'levels' => $this->userMgtService->fetchResource('/api/v1/internal/permissions/levels', 'permissionLevels')
+            'levels' => $this->userMgtService->fetchResource('/api/usermgt/v1/access/permissions/levels', 'permissionLevels')
                 ?? [
                     ['key' => 'none', 'label' => 'NONE', 'value' => 0],
                     ['key' => 'read', 'label' => 'READ', 'value' => 1],
@@ -199,15 +200,38 @@ class UserController extends Controller
         $data = $request->validate([
             'roles' => 'sometimes|array',
             'roles.*' => 'string',
-            'permissions' => 'sometimes|array',      // { module_key: level_int }
+            'permissions' => 'sometimes|array',   // { module_key: level_int }
             'permissions.*' => 'integer|between:0,3',
         ]);
 
-        $this->userMgtService->storeResource("/api/v1/internal/users/{$id}/access", [
-            'roles' => $data['roles'] ?? [],
-            'permissions' => $data['permissions'] ?? [],
-        ], 'saveAccess');
+        // Forward each pane ONLY if present. has() is true for an explicit []
+        // (intentional clear) but false when the key was omitted (leave untouched).
+        $payload = [];
+        if ($request->has('roles')) {
+            $payload['roles'] = $data['roles'] ?? [];
+        }
+        if ($request->has('permissions')) {
+            $payload['permissions'] = $data['permissions'] ?? [];
+        }
 
-        return back()->with('status', 'Access updated.');
+        if (empty($payload)) {
+            return response()->json(['message' => 'Nothing to update.'], 422);
+        }
+
+        $result = $this->userMgtService->storeResource(
+            "/api/usermgt/v1/access/users/{$id}/access",
+            $payload,
+            'saveAccess'
+        );
+
+        if ($result === null) {
+            return response()->json(['message' => 'Access could not be saved.'], 502);
+        }
+
+        auditLog('User Mgt', 'App\Models\User', $id, $data, 'Updated User Permissions');
+        return response()->json([
+            'message' => 'Access updated.',
+            'data' => $result,
+        ]);
     }
 }

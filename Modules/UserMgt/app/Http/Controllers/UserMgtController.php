@@ -34,6 +34,16 @@ class UserMgtController extends Controller
 
         return view('usermgt::index', [
             'title' => 'User Mgt',
+            'auditData' => [
+                'role' => [
+                    'module' => 'User Mgt',
+                    'entity' => 'Role',
+                ],
+                'user' => [
+                    'module' => 'User Mgt',
+                    'entity' => 'User',
+                ],
+            ]
         ]);
     }
 }

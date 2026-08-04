@@ -223,7 +223,7 @@ function onJsonSuccess(data, mode = null, container = null, selector = null) {
             return;
         }
 
-        redrawDataTable(container);
+        redrawDataTable(container, true);
         return;
     }
 
@@ -312,15 +312,30 @@ function onModalShown(modal) {
 
 /* ========= DataTable Safe Redraw ========= */
 
-function redrawDataTable(container) {
+function redrawDataTable(container, reload = false) {
     if (!container) return;
 
-    const $table = $("#" + container).find("table");
-    if (!$table.length) return;
-
-    if ($.fn.DataTable.isDataTable($table)) {
-        $table.DataTable().draw(false);
+    // Target the DataTable directly instead of any descendant <table>,
+    // so responsive child tables don't get picked up.
+    const $table = $("#" + container)
+        .find("table.dataTable")
+        .first();
+    if (!$table.length) {
+        // No <table> found at all — container may not be rendered yet.
+        return;
     }
+
+    if (!$.fn.DataTable.isDataTable($table)) {
+        // Table exists but was never initialized (tab not opened yet, or the
+        // container HTML was re-rendered and wiped the old instance).
+        console.warn(
+            `redrawDataTable: #${container} has a table but no DataTable instance`,
+        );
+        return;
+    }
+
+    const dt = $table.DataTable();
+    reload ? dt.ajax.reload(null, false) : dt.draw(false);
 }
 
 /* ========= Submit Button Controls ========= */

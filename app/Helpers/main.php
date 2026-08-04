@@ -463,3 +463,14 @@ if (!function_exists('redact')) {
         return $payload;
     }
 }
+
+if (!function_exists('currentTenantId')) {
+    /**
+     * Resolve the active tenant from your JWT / tenant-scope layer.
+     * Point this at wherever your Passport middleware stashes the tenant.
+     */
+    function currentTenantId(Request $request): ?string
+    {
+        return $request->attributes->get('tenant_id');
+    }
+}

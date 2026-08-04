@@ -23,18 +23,19 @@ Route::middleware('ek-web')->prefix('user-mgt')->group(function () {
 
         Route::middleware('perm:user_mgt.users,read_write')->group(function () {
             Route::get('create', 'create')->name('create');
-            Route::post('/', 'store')->name('store');
+            Route::post('/', 'store')->name('store')->middleware('audit.bff');
             Route::get('{id}/edit', 'edit')->name('edit')->whereUuid('id');
-            Route::put('{id}', 'update')->name('update')->whereUuid('id');
+            Route::put('{id}', 'update')->name('update')->whereUuid('id')->middleware('audit.bff');
 
             Route::prefix('{id}/access')->group(function () {
-                Route::get('roles', 'loadRoles')->name('access.roles');
-                Route::get('permissions', 'loadPermissions')->name('access.permissions');
+                Route::get('roles', 'loadRoles')->name('access.roles')->whereUuid('id');
+                Route::get('permissions', 'loadPermissions')->name('access.permissions')->whereUuid('id');
+                Route::post('save', 'save')->name('access.save')->whereUuid('id')->middleware('audit.bff');
             });
         });
 
         Route::middleware('perm:user_mgt.users,full_control')
-            ->delete('{id}', 'destroy')->name('destroy')->whereUuid('id');
+            ->delete('{id}', 'destroy')->name('destroy')->whereUuid('id')->middleware('audit.bff');
     });
 
     // ---- Roles (leaf: user_mgt.roles) ----
@@ -46,22 +47,17 @@ Route::middleware('ek-web')->prefix('user-mgt')->group(function () {
         });
         Route::middleware('perm:user_mgt.roles,read_write')->group(function () {
             Route::get('create', 'create')->name('create');
-            Route::post('/', 'store')->name('store');
+            Route::post('/', 'store')->name('store')->middleware('audit.bff');
             Route::get('{id}/edit', 'edit')->name('edit')->whereUuid('id');
-            Route::put('{id}', 'update')->name('update')->whereUuid('id');
+
+            Route::prefix('{id}/access')->group(function () {
+                Route::get('permissions', 'loadPermissions')->name('access.permissions')->whereUuid('id');
+                Route::post('permissions', 'savePermissions')->name('access.permissions.save')->whereUuid('id')->middleware('audit.bff');
+            });
         });
         Route::middleware('perm:user_mgt.roles,full_control')
-            ->delete('{id}', 'destroy')->name('destroy')->whereUuid('id');
+            ->delete('{id}', 'destroy')->name('destroy')->whereUuid('id')->middleware('audit.bff');
 
     });
 
-
-    // ---- Access Controls: the permission matrix (leaf: user_mgt.permissions) ----
-    // Not a CRUD resource — a view of one user's matrix and a save. Editing the matrix is
-    // a read_write action; there is no create or delete.
-    Route::controller(AccessControlController::class)->prefix('access-controls')->name('access-controls.')->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('perm:user_mgt.permissions,read');
-        Route::get('{userId}', 'edit')->name('edit')->whereUuid('userId')->middleware('perm:user_mgt.permissions,read');
-        Route::put('{userId}', 'update')->name('update')->whereUuid('userId')->middleware('perm:user_mgt.permissions,read_write');
-    });
 });

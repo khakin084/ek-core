@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('access_logs', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Who performed the action
-            $table->foreignId('user_id')->nullable();
+            $table->uuid('user_id')->nullable();
 
             // Module grouping (e.g. Item Master, Sales, Users)
             $table->string('module')->index();
@@ -22,7 +22,7 @@ return new class extends Migration
 
             // What model was affected
             $table->string('model_type')->nullable()->index();
-            $table->unsignedBigInteger('model_id')->nullable()->index();
+            $table->uuid('model_id')->nullable()->index();
 
             // Event type (created, updated, deleted)
             $table->string('event')->nullable()->index();

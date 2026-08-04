@@ -170,6 +170,16 @@ class UserMgtService
         return $res->json();
     }
 
+    public function getRolesDataTable(array $dt = []): array
+    {
+        $query = buildDtQuery($dt);
+
+        $path = '/api/usermgt/v1/roles/list';
+        $res = $this->request($path)->get($this->url($path), $query);
+
+        return $res->json();
+    }
+
     /**
      * --------------------------
      * Generic resource helpers

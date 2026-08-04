@@ -47,9 +47,9 @@ return [
         'accounts'        => ['icon' => 'fa-solid fa-book'],
         'invoices'        => ['icon' => 'fa-solid fa-file-invoice'],
         'human_resources' => ['icon' => 'fa-solid fa-users'],
-        'item_master'     => ['icon' => 'fa-solid fa-boxes-stacked'],
+        'item_master' => ['icon' => 'fa-solid fas fa-boxes'],
         'warehouses'      => ['icon' => 'fa-solid fa-warehouse'],
-        'user_mgt'        => ['route' => 'usermgt.index', 'icon' => 'fa-solid fa-users-gear'],
+        'user_mgt' => ['route' => 'usermgt.index', 'icon' => 'fa-solid fas fa-users-cog'],
         'approvals'       => ['icon' => 'fa-solid fa-calendar-check'],
 
         // ---- accounts submodules ----
