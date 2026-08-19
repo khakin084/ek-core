@@ -39,6 +39,10 @@ class AuditBffMiddleware
             return $response;
         }
 
+        // Failures are logged only when the controller explicitly opted in by passing audit
+        // metadata to apiFail — a 422 from validation or a 404 from a bad id writes nothing.
+        $failed = !$isOk;
+
         $module = $request->header('X-AUDIT-MODULE', $audit['module'] ?? 'General');
         $entity = $request->header('X-AUDIT-ENTITY', $audit['entity'] ?? null);
 
@@ -70,6 +74,7 @@ class AuditBffMiddleware
                 'model_type' => $audit['model_type'] ?? null,
                 'model_id' => $audit['model_id'] ?? $request->header('X-AUDIT-RECORD-ID'),
                 'event' => $audit['event'] ?? strtolower($request->method()),
+                'success' => !$failed,
                 'payload' => $payload ?: null,
                 'changes' => $audit['changes'] ?? null,
                 'user_agent' => $request->userAgent(),

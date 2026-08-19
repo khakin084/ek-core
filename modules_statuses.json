@@ -2,5 +2,6 @@
     "Catalog": true,
     "Catalogs": true,
     "Stakeholders": true,
-    "UserMgt": true
+    "UserMgt": true,
+    "Approvals": true
 }

@@ -307,6 +307,7 @@ $user = authUser();
 	<script src="{{ asset('vendor/jquery-ui.min.js') }}" type="text/javascript"></script>
 	<script src="{{ asset('vendor/dragtable/jquery.dragtable.js') }}" type="text/javascript"></script>
 	<script src="{{ asset('js/jquery.multiselect.js') }}"></script>
+	<script src="{{ asset('js/custom-multi-select.js') }}"></script>
 
 	<!--- Other CSS --->
 	<script src="{{ asset('vendor/select2/select2.min.js') }}"></script>

@@ -50,7 +50,7 @@ return [
         'item_master' => ['icon' => 'fa-solid fas fa-boxes'],
         'warehouses'      => ['icon' => 'fa-solid fa-warehouse'],
         'user_mgt' => ['route' => 'usermgt.index', 'icon' => 'fa-solid fas fa-users-cog'],
-        'approvals'       => ['icon' => 'fa-solid fa-calendar-check'],
+        'approvals' => ['route' => 'approvals.index', 'icon' => 'fa-solid fas fa-calendar-check'],
 
         // ---- accounts submodules ----
         'accounts.vouchers'          => ['route' => 'accounts.vouchers.index',          'icon' => 'fa-solid fa-receipt'],
@@ -82,10 +82,10 @@ return [
 
         // ---- user mgt submodules ----
         'user_mgt.users'       => ['route' => 'users.index',           'icon' => 'fa-solid fa-user'],
-        'user_mgt.roles'       => ['route' => 'roles.index',           'icon' => 'fa-solid fa-user-shield'],
-        'user_mgt.permissions' => ['route' => 'access-controls.index', 'icon' => 'fa-solid fa-toggle-on'],
+        'user_mgt.roles' => ['route' => 'roles.index', 'icon' => 'fa-solid fa-user-shield'],
 
         // ---- approvals submodules ----
-        'approvals.settings' => ['route' => 'approvals.settings.index', 'icon' => 'fa-solid fa-sliders'],
+        'approvals.data' => ['route' => 'approvals.data.index', 'icon' => 'fa-solid fa-sliders'],
+        'approvals.settings' => ['route' => 'approvals.settings.index', 'icon' => 'fa-solid fas fa-cogs'],
     ],
 ];
