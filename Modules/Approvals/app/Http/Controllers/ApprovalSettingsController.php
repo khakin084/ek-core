@@ -118,13 +118,11 @@ class ApprovalSettingsController extends Controller
 
         $result = $this->approvalService->getApprovalFlowDataTable($dt);
 
-        return response()->json($result ?? [
-            'draw' => $dt['draw'],
-            'recordsTotal' => 0,
-            'recordsFiltered' => 0,
-            'data' => [],
-            'error' => 'Failed to load item groups',
-        ], $result ? 200 : 502);
+        if (!userCan('approvals.settings', 'read')) {
+            return dtEmpty($dt, 'You do not have access to approval requests.');
+        }
+
+        return dtRelay($dt, $result);
     }
 
 

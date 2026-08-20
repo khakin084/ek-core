@@ -28,6 +28,7 @@ class AccessLog extends Model
         'model_type',
         'model_id',
         'event',
+        'success',
         'payload',
         'changes',
         'user_agent',

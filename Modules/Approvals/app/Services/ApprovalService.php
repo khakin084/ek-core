@@ -13,6 +13,7 @@ use App\Services\Http\TokenType;
 class ApprovalService extends BaseMicroserviceClient
 {
     protected string $defaultService = 'ek-auth';
+    public const FILTERS = ['requester', 'request_type', 'request_status', 'date_from', 'date_to'];
 
     /**
      * Upsert a flow. Returns [status, decodedBody] so the controller can relay 422/409 back to
@@ -68,10 +69,21 @@ class ApprovalService extends BaseMicroserviceClient
         $query = buildDtQuery($dt);
 
         return $this->listResourceForDataTable(
-            '/api/v1/approval-flow/list', 
+            '/api/v1/approval-flow/list',
             'getApprovalFlowDataTable',
             $query,
             as: TokenType::User,
+        );
+    }
+ 
+    public function getApprovalsDataTable(array $dt = []): array
+    {
+        return $this->listResourceForDataTable(
+            '/api/v1/approvals/requests',
+            'getApprovalsDataTable',
+            dtForward($dt, self::FILTERS),
+            as: TokenType::User,
+            service: 'ek-approvals',
         );
     }
 }

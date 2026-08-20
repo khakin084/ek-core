@@ -36,8 +36,10 @@
         "files": [
             "app/Helpers/main.php",
             "app/Helpers/auth.php",
+            "app/Helpers/AuditMetaHelper.php",
             "app/Helpers/AuditLogHelper.php",
-            "app/Helpers/ApiResponseHelper.php"
+            "app/Helpers/ApiResponseHelper.php",
+            "app/Helpers/EkDatatableHelper.php"
         ]
     },
     "autoload-dev": {

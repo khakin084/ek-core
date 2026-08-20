@@ -10,10 +10,7 @@
 		//
 		// This map (key -> pane/label/icon/view) is the one container-specific bit; every
 		// tabbed container index has its own. Everything else below is the standard shell.
-		$tabs = collect([
-            ['key' => 'approvals.data', 'pane' => 'list', 'label' => 'List', 'icon' => 'fas fa-calendar-check', 'view' => 'approvals::data.index'], 
-            ['key' => 'approvals.settings', 'pane' => 'settings', 'label' => 'Settings', 'icon' => 'fas fa-cogs', 'view' => 'approvals::settings.index']
-            ])
+		$tabs = collect([['key' => 'approvals.data', 'pane' => 'requests', 'label' => 'Requests', 'icon' => 'fas fa-calendar-check', 'view' => 'approvals::data.index'], ['key' => 'approvals.settings', 'pane' => 'settings', 'label' => 'Settings', 'icon' => 'fas fa-cogs', 'view' => 'approvals::settings.index']])
 		    ->filter(fn($tab) => userCan($tab['key'], 'read'))
 		    ->values();
 	@endphp
@@ -98,22 +95,139 @@
 	<script>
 		$(document).ready(function() {
 
+			// DOM REFERENCES
+			const $container = $('#approval_container');
+			const $requesterSelect = $container.find('select[name="requester"]');
+			const $requestTypeSelect = $container.find('select[name="request_type"]');
+			const $requestStatusSelect = $container.find('select[name="request_status"]');
+			const $dateFromInput = $container.find('input[name="date_from"]');
+			const $dateToInput = $container.find('input[name="date_to"]');
+			const $nav = $('#approvalNav a[data-toggle="pill"]');
+
 			divDismissible();
 
-			initTabPersistence($('#approvalNav'), "approvalNavActiveTab");
-
-			$(function() {
-				TabTables.init({
-					nav: "#approvalNav",
-					storageKey: "approvalNavActiveTab",
-					tables: {
-						"#data": initApprovalsTable,
-						"#settings": initApprovalSettingsTable
-					}
-				});
+			// Hold the instance so filters can reload instead of re-initializing.
+			let approvalsTable;
+			
+			TabTables.init({
+				nav: "#approvalNav",
+				storageKey: "approvalNavActiveTab",
+				tables: {
+					"#requests": initApprovalsTable,
+					"#settings": initApprovalSettingsTable
+				}
 			});
 
-			function initApprovalsTable() {	
+			function initApprovalsTable() {
+				approvalsTable = $("#approvalsTable").DataTable({
+					processing: true,
+					serverSide: true,
+					ajax: {
+						url: "{{ route('approvals.data.data') }}",
+						type: "POST",
+						data: function(e) {
+							e.requester = $requesterSelect.val();
+							e.request_type = $requestTypeSelect.val();
+							e.request_status = $requestStatusSelect.val();
+							e.date_from = $dateFromInput.val();
+							e.date_to = $dateToInput.val();
+						},
+					},
+					columns: [{
+							data: "request_date",
+							name: "request_date"
+						},
+						{
+							data: "requested_for",
+							name: "requested_for"
+						},
+						{
+							data: "requested_type",
+							name: "requested_type"
+						},
+						{
+							data: "reference",
+							name: "reference"
+						},
+						{
+							data: "value",
+							name: "value"
+						},
+						{
+							data: "created_by",
+							name: "created_by"
+						},
+						{
+							data: "status",
+							name: "status"
+						},
+						{
+							data: "id",
+							name: "actions",
+							orderable: false,
+							searchable: false,
+							render: function(id) {
+								return `
+									<div class="table-data-feature pull-left" style="display: flex; gap: 2px;">
+										<button class="btn btn-sm btn-success js-show-request" data-id="${id}">
+											<i class="zmdi zmdi-eye"></i>
+										</button>
+									</div>`;
+							}
+						}
+					],
+					order: [
+						[0, "desc"]
+					],
+					pageLength: 25,
+					responsive: true,
+					error: function(xhr, error, thrown) {
+						console.error('DataTable Ajax Error:', error, thrown);
+					}
+				});
+				return approvalsTable;
+			}
+			
+			function reloadApprovals() {
+				if (approvalsTable) approvalsTable.ajax.reload();
+			}
+
+			$container.find('.js-search-filters').on('click', reloadApprovals);
+
+			$container.find('.js-reset-filters').on('click', function() {
+				$requesterSelect.val('').trigger('change');
+				$requestTypeSelect.val('').trigger('change');
+				$requestStatusSelect.val('').trigger('change');
+				$dateFromInput.val('');
+				$dateToInput.val('');
+				reloadApprovals();
+			});
+
+			// Tab event: init select2 widgets only when a pane becomes visible.
+			// (Separate concern from TabTables — widget init, not table init.)
+			$nav.on('shown.bs.tab', function(e) {
+				var paneId = $(e.target).attr('href');
+				if (paneId && paneId.startsWith('#')) {
+					initSelect2(paneId);
+				}
+			});
+
+			// Page load: init select2 in the currently active tab.
+			var $activeTab = $nav.filter('.active');
+			if ($activeTab.length) {
+				initSelect2($activeTab.attr('href'));
+			}
+
+			function initSelect2(container) {
+				$(container).find('.selectXs').each(function() {
+					var $this = $(this);
+					if (!$this.data('select2')) {
+						$this.select2({
+							width: '100%',
+							allowClear: true
+						});
+					}
+				});
 			}
 
 			function initApprovalSettingsTable() {
@@ -121,7 +235,7 @@
 					processing: true,
 					serverSide: true,
 					ajax: {
-						url: "{{ route('approvals.settings.data') }}", // your DataTables endpoint
+						url: "{{ route('approvals.settings.data') }}",
 						type: "POST"
 					},
 					columns: [{
@@ -152,7 +266,7 @@
 						}
 					],
 					order: [
-						[0, "asc"]
+						[0, "desc"]
 					],
 					pageLength: 25,
 					responsive: true
@@ -164,7 +278,13 @@
 				const aflowEditUrl = "{{ route('approvals.settings.edit', ['__ID__']) }}";
 				window.location.href = aflowEditUrl.replace("__ID__", id);
 			});
-            
+
+			$(document).on("click", ".js-show-request", function() {
+				const id = $(this).data("id");
+				const requestShowUrl = "{{ route('approvals.data.show', ['__ID__']) }}";
+				window.location.href = requestShowUrl.replace("__ID__", id);
+			});
+
 		});
 	</script>
 @endsection
