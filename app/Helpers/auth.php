@@ -301,3 +301,28 @@ if (! function_exists('authMenu')) {
             ->compose(session('menu', [])));
     }
 }
+
+if (!function_exists('actingUser')) {
+    /**
+     * Get the current authenticated user's context snapshot.
+     *
+     * @return array{
+     *     id: int|string|null,
+     *     name: string|null,
+     *     email: string|null,
+     *     phone: string|null,
+     *     roles: array
+     * }
+     */
+    function actingUser(): array
+    {
+        $user = session('auth_user');
+        return [
+            'id' => $user['id'],
+            'name' => $user['full_name'],
+            'email' => $user['email'],
+            'phone' => $user['phone'],
+            'roles' => $user['roles'] ?? [],
+        ];
+    }
+}

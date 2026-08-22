@@ -2,7 +2,7 @@
 	$edit = isset($role);
 @endphp
 
-<form name="item-group-reg-form" action="{{ route('roles.store') }}" method="POST" class="item-group-form" autocomplete="off">
+<form name="role-reg-form" action="{{ route('roles.store') }}" method="POST" class="role-form" autocomplete="off">
 	<div class="modal-header">
 		<h5 class="modal-title" id="role_form_label">{{ $title }}</h5>
 		<button type="button" class="close" data-dismiss="modal" aria-label="Close">

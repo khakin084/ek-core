@@ -20,6 +20,7 @@ class ApprovalsController extends Controller
         $this->dropdownCacheService = $dropdownCacheService;
         $this->approvalService = $approvalService;
     }
+    
     public function index(): View
     {
         // Visibility gate for a TABBED container. Tabs are inline panes, not links, so this

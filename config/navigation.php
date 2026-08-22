@@ -30,7 +30,7 @@ return [
     'items' => [
 
         // ---- top-level leaves (navigate directly) ----
-        'stakeholders' => ['route' => 'stakeholders.index', 'icon' => 'fa-solid fa-handshake'],
+        'stakeholders' => ['route' => 'stakeholders.index', 'icon' => 'fa-solid fas fa-handshake'],
         'fleet'        => ['route' => 'fleet.index',        'icon' => 'fa-solid fa-truck'],
         'to_do_list'   => ['route' => 'todo.index',         'icon' => 'fa-solid fa-list-check'],
         'assets'       => ['route' => 'assets.index',       'icon' => 'fa-solid fa-barcode'],
